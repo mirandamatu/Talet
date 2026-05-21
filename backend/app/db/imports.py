@@ -1,0 +1,29 @@
+from app.models.ai_insight import AIInsight  # noqa: F401
+from app.models.activity_log import ActivityLog  # noqa: F401
+from app.models.alert_log import AlertLog  # noqa: F401
+from app.models.availability_slot import AvailabilitySlot  # noqa: F401
+from app.models.calendar_event import CalendarEvent  # noqa: F401
+from app.models.candidate import Candidate  # noqa: F401
+from app.models.candidate_note import CandidateNote  # noqa: F401
+from app.models.candidate_note_visibility import CandidateNoteVisibility  # noqa: F401
+from app.models.candidate_outreach import CandidateOutreach  # noqa: F401
+from app.models.candidate_outreach_token import CandidateOutreachToken  # noqa: F401
+from app.models.candidate_presentation import CandidatePresentation  # noqa: F401
+from app.models.client import Client  # noqa: F401
+from app.models.client_profile import ClientContact, ClientProfile  # noqa: F401
+from app.models.hub import Conversation, ConversationParticipant, ConversationSummary, MeetingIntegration, Message  # noqa: F401
+from app.models.organization import Organization  # noqa: F401
+from app.models.feedback import Feedback  # noqa: F401
+from app.models.google_calendar_connection import GoogleCalendarConnection  # noqa: F401
+from app.models.interview import Interview  # noqa: F401
+from app.models.interview_transcript import InterviewTranscript  # noqa: F401
+from app.models.notification_log import NotificationLog  # noqa: F401
+from app.models.search import Search  # noqa: F401
+from app.models.search_ai_question import SearchAIQuestion  # noqa: F401
+from app.models.search_candidate_analysis import SearchCandidateAnalysis  # noqa: F401
+from app.models.search_document import SearchDocument  # noqa: F401
+from app.models.status_history import StatusHistory  # noqa: F401
+from app.models.user import User  # noqa: F401
+from app.models.user_client import UserClient  # noqa: F401
+from app.models.user_email_setting import UserEmailSetting  # noqa: F401
+from app.models.user_preference import UserPreference  # noqa: F401

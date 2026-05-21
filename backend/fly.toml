@@ -1,0 +1,30 @@
+app = "acid-talent-api"
+primary_region = "gru"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  ACCESS_TOKEN_EXPIRE_MINUTES = "480"
+  AI_API_BASE_URL = "https://api.openai.com/v1"
+  AI_MODEL = "gpt-4o-mini"
+  AI_TIMEOUT_SECONDS = "45"
+  SMTP_FROM_EMAIL = "no-reply@acidtalent.local"
+  SMTP_PORT = "587"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[mounts]
+  source = "uploads_data"
+  destination = "/app/uploads"

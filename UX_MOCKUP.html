@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Acid Talent OS — Propuesta UI/UX</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  /* ===== Tokens (mismos que el sistema actual + nuevos propuestos) ===== */
+  :root {
+    --bg: #07111f;
+    --bg-2: #0b1728;
+    --surface: rgba(255, 255, 255, 0.08);
+    --surface-2: rgba(255, 255, 255, 0.12);
+    --surface-solid: #101c2e;
+    --card: rgba(13, 25, 43, 0.88);
+    --line: rgba(164, 181, 210, 0.18);
+    --line-strong: rgba(115, 142, 255, 0.45);
+    --text: #eef5ff;
+    --muted: #91a4bf;
+    --blue: #6e8cff;
+    --cyan: #44d7ff;
+    --green: #58d68d;
+    --amber: #f8c14a;
+    --red: #ff6577;
+    --purple: #b486ff;
+    --shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+    --field-bg: rgba(255, 255, 255, 0.07);
+    --shell-bg: rgba(4, 11, 22, 0.82);
+    --topbar-bg: rgba(13, 25, 43, 0.7);
+    --soft-text: #c7d7ef;
+    --card-text: #bed0e8;
+    --tag-text: #aeeeff;
+    --badge-text: #dbe7ff;
+    --danger-text: #ffdce1;
+    --modal-backdrop: rgba(2, 6, 12, 0.72);
+
+    /* === Nuevos tokens propuestos === */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-7: 32px;
+    --space-8: 40px;
+    --radius-sm: 10px;
+    --radius-md: 14px;
+    --radius-lg: 18px;
+    --radius-xl: 22px;
+    --radius-2xl: 28px;
+    --pill: 999px;
+    --success-soft: rgba(88, 214, 141, 0.12);
+    --warn-soft: rgba(248, 193, 74, 0.12);
+    --danger-soft: rgba(255, 101, 119, 0.12);
+    --info-soft: rgba(68, 215, 255, 0.12);
+    --focus-ring: 0 0 0 3px rgba(68, 215, 255, 0.4);
+    --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --dur-fast: 140ms;
+    --dur-base: 220ms;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100vh; }
+  body {
+    background:
+      radial-gradient(circle at top left, rgba(68, 215, 255, 0.22), transparent 34vw),
+      radial-gradient(circle at 80% 10%, rgba(110, 140, 255, 0.2), transparent 28vw),
+      linear-gradient(135deg, var(--bg), var(--bg-2));
+    color: var(--text);
+    font-family: Inter, "Segoe UI", system-ui, sans-serif;
+    padding: var(--space-7);
+    line-height: 1.4;
+  }
+  h1, h2, h3, h4, p { margin: 0; }
+
+  /* === Layout del mockup === */
+  .doc {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: grid;
+    gap: var(--space-7);
+  }
+  .doc-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+  }
+  .doc-head h1 {
+    font-size: clamp(28px, 4vw, 44px);
+    letter-spacing: -0.05em;
+    line-height: 1;
+  }
+  .doc-head p { color: var(--muted); margin-top: var(--space-2); max-width: 620px; }
+  .brand-mark {
+    width: 56px; height: 56px;
+    border-radius: var(--radius-lg);
+    display: grid; place-items: center;
+    color: white; font-weight: 900; letter-spacing: -0.06em;
+    background: linear-gradient(135deg, var(--cyan), var(--blue) 56%, var(--purple));
+    box-shadow: 0 14px 38px rgba(68, 215, 255, 0.28);
+  }
+  .legend-pills { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+  .legend-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    border-radius: var(--pill); padding: 6px 12px;
+    font-size: 12px; font-weight: 800;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .legend-pill::before {
+    content: ""; width: 8px; height: 8px; border-radius: 999px;
+  }
+  .legend-pill.before::before { background: var(--red); }
+  .legend-pill.after::before { background: var(--green); }
+
+  .section { display: grid; gap: var(--space-4); }
+  .section-title { display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap; }
+  .section-title h2 { font-size: 22px; letter-spacing: -0.02em; }
+  .section-title .step-pill {
+    border: 1px solid var(--line-strong);
+    border-radius: var(--pill);
+    padding: 5px 10px;
+    color: var(--cyan);
+    background: rgba(68, 215, 255, 0.1);
+    font-size: 11px; font-weight: 900;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .section-title p { color: var(--muted); width: 100%; margin-top: var(--space-2); }
+
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+  }
+  @media (max-width: 980px) {
+    .compare-grid { grid-template-columns: 1fr; }
+  }
+  .card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-xl);
+    background: var(--card);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(24px);
+    padding: var(--space-5);
+    display: grid;
+    gap: var(--space-4);
+  }
+  .card-tag {
+    align-self: start;
+    font-size: 11px; font-weight: 900;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    padding: 4px 10px; border-radius: var(--pill);
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid var(--line);
+  }
+  .card-tag.before { color: var(--red); border-color: rgba(255,101,119,0.34); background: var(--danger-soft); }
+  .card-tag.after { color: var(--green); border-color: rgba(88,214,141,0.34); background: var(--success-soft); }
+  .notes {
+    margin: 0; padding-left: var(--space-4);
+    color: var(--soft-text); font-size: 14px; display: grid; gap: 4px;
+  }
+  .notes li::marker { color: var(--muted); }
+
+  /* === Inputs / forms BASE (compartido) === */
+  label, .label {
+    display: block;
+    color: var(--soft-text);
+    font-weight: 700;
+    font-size: 13px;
+  }
+  input, textarea, select {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    background: var(--field-bg);
+    color: var(--text);
+    padding: 12px 14px;
+    font: inherit;
+    outline: none;
+    transition: border-color var(--dur-fast) var(--ease-out),
+                box-shadow var(--dur-fast) var(--ease-out);
+  }
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--cyan);
+    box-shadow: var(--focus-ring);
+  }
+
+  /* === BUTTONS === */
+  button {
+    border: 0;
+    font: inherit;
+    cursor: pointer;
+    transition: transform var(--dur-fast) var(--ease-out),
+                background var(--dur-base) var(--ease-out),
+                box-shadow var(--dur-fast) var(--ease-out),
+                filter var(--dur-fast) var(--ease-out);
+  }
+  button:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+  }
+  .primary-action {
+    color: white;
+    background: linear-gradient(135deg, var(--cyan), var(--blue));
+    padding: 12px 18px;
+    border-radius: var(--radius-md);
+    font-weight: 800;
+    box-shadow: 0 18px 40px rgba(68, 215, 255, 0.2);
+    display: inline-flex; align-items: center; gap: 8px; justify-content: center;
+  }
+  .primary-action:hover { transform: translateY(-1px); filter: brightness(1.08); }
+  .ghost-action {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--line);
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    font-weight: 800;
+    display: inline-flex; align-items: center; gap: 8px; justify-content: center;
+  }
+  .ghost-action:hover { transform: translateY(-1px); }
+  .danger-action {
+    color: white;
+    background: linear-gradient(135deg, #ff7b88, var(--red));
+    padding: 12px 18px;
+    border-radius: var(--radius-md);
+    font-weight: 800;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .icon-btn {
+    min-width: 42px; height: 42px;
+    display: inline-grid; place-items: center;
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+  }
+  .icon-btn:hover { transform: translateY(-1px); }
+  .icon-btn svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 1.8; fill: none; }
+
+  button[disabled] { opacity: 0.55; cursor: not-allowed; transform: none !important; }
+
+  /* === FIELD component (propuesto) === */
+  .field { display: grid; gap: 6px; }
+  .field-label-row {
+    display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2);
+  }
+  .field-label {
+    color: var(--text);
+    font-weight: 700;
+    font-size: 13px;
+  }
+  .field-label .req { color: var(--red); margin-left: 2px; }
+  .field-hint { color: var(--muted); font-size: 12px; }
+  .field-helper { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .field-error {
+    color: var(--red); font-size: 12px; margin-top: 4px;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .field-error svg { width: 14px; height: 14px; }
+  .field.has-error input,
+  .field.has-error textarea,
+  .field.has-error select {
+    border-color: rgba(255, 101, 119, 0.55);
+    box-shadow: 0 0 0 3px rgba(255, 101, 119, 0.18);
+  }
+  .field-success-icon {
+    color: var(--green); width: 16px; height: 16px;
+  }
+
+  /* === Toast/inline feedback === */
+  .inline-error,
+  .inline-success,
+  .inline-info {
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    display: flex; align-items: flex-start; gap: 10px;
+    font-size: 14px; font-weight: 600;
+  }
+  .inline-error {
+    color: var(--danger-text);
+    border: 1px solid rgba(255, 101, 119, 0.34);
+    background: var(--danger-soft);
+  }
+  .inline-success {
+    color: #c5f7d8;
+    border: 1px solid rgba(88, 214, 141, 0.34);
+    background: var(--success-soft);
+  }
+  .inline-info {
+    color: var(--tag-text);
+    border: 1px solid rgba(68, 215, 255, 0.34);
+    background: var(--info-soft);
+  }
+  .inline-error svg,
+  .inline-success svg,
+  .inline-info svg {
+    width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px;
+  }
+
+  /* Toast flotante propuesto */
+  .toast-wrap { position: relative; min-height: 76px; }
+  .toast {
+    border-radius: var(--radius-md);
+    padding: 12px 14px 12px 12px;
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    backdrop-filter: blur(24px);
+    box-shadow: var(--shadow);
+    animation: toastIn var(--dur-base) var(--ease-out);
+    max-width: 420px;
+  }
+  .toast.success { border-left: 4px solid var(--green); }
+  .toast.error { border-left: 4px solid var(--red); }
+  .toast.info { border-left: 4px solid var(--cyan); }
+  .toast .toast-icon { width: 20px; height: 20px; flex-shrink: 0; }
+  .toast .toast-body { flex: 1; }
+  .toast .toast-body strong { display: block; font-size: 14px; }
+  .toast .toast-body span { color: var(--muted); font-size: 12px; }
+  .toast .toast-close {
+    background: transparent; border: 0; color: var(--muted); cursor: pointer; padding: 4px;
+    border-radius: 8px;
+  }
+  .toast .toast-close:hover { background: var(--surface); color: var(--text); }
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* === Skeleton === */
+  .skeleton {
+    background:
+      linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.1), rgba(255,255,255,0.04));
+    background-size: 200% 100%;
+    animation: shimmer 1.4s linear infinite;
+    border-radius: var(--radius-md);
+  }
+  @keyframes shimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+  }
+
+  /* === Empty state === */
+  .empty-state {
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6) var(--space-4);
+    color: var(--muted);
+    text-align: center;
+    display: grid;
+    gap: 8px;
+    place-items: center;
+  }
+  .empty-state strong { color: var(--text); font-size: 15px; }
+  .empty-illu {
+    width: 56px; height: 56px;
+    border-radius: var(--radius-lg);
+    display: grid; place-items: center;
+    background: rgba(110, 140, 255, 0.12);
+    border: 1px solid var(--line);
+    color: var(--blue);
+  }
+  .empty-illu svg { width: 26px; height: 26px; stroke: currentColor; fill: none; stroke-width: 1.5; }
+
+  /* === Badges === */
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    min-height: 26px; border-radius: var(--pill);
+    padding: 4px 10px;
+    color: var(--badge-text);
+    background: rgba(255, 255, 255, 0.09);
+    border: 1px solid var(--line);
+    font-size: 12px; font-weight: 800;
+  }
+  .badge.ok { color: var(--green); border-color: rgba(88,214,141,0.32); background: var(--success-soft); }
+  .badge.warn { color: var(--amber); border-color: rgba(248,193,74,0.32); background: var(--warn-soft); }
+  .badge.danger { color: var(--red); border-color: rgba(255,101,119,0.32); background: var(--danger-soft); }
+  .badge svg { width: 12px; height: 12px; }
+
+  /* === Entity row (lista de candidatos / notificaciones) === */
+  .entity-row {
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    display: flex; gap: var(--space-3);
+    align-items: center; justify-content: space-between;
+    transition: border-color var(--dur-base) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  }
+  .entity-row:hover { border-color: var(--line-strong); transform: translateY(-2px); }
+  .entity-row strong { font-size: 15px; }
+  .entity-row span { color: var(--muted); font-size: 13px; }
+  .row-actions { display: flex; gap: 8px; align-items: center; }
+
+  /* === Topbar (mockup) === */
+  .topbar {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-xl);
+    background: var(--topbar-bg);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(22px);
+    padding: var(--space-4);
+    display: flex; justify-content: space-between; gap: var(--space-3);
+    align-items: center; flex-wrap: wrap;
+  }
+  .topbar h1 { font-size: 22px; letter-spacing: -0.03em; }
+  .topbar .eyebrow {
+    text-transform: uppercase; letter-spacing: 0.16em;
+    font-size: 11px; font-weight: 800; color: var(--muted);
+  }
+  .topbar-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .search-input {
+    min-width: 200px;
+    padding-left: 38px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2391a4bf' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: 12px center;
+  }
+  .notification-pill {
+    position: relative;
+    min-width: 42px; height: 42px;
+    border-radius: var(--radius-md);
+    display: inline-grid; place-items: center;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--line);
+    color: var(--text);
+  }
+  .notification-pill .count {
+    position: absolute; top: -4px; right: -4px;
+    min-width: 18px; height: 18px; padding: 0 5px;
+    border-radius: 999px;
+    background: var(--red);
+    color: white;
+    font-size: 10px; font-weight: 800;
+    display: grid; place-items: center;
+    border: 2px solid var(--bg);
+  }
+  .notification-pill svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 1.8; fill: none; }
+
+  /* === File input === */
+  .file-input {
+    display: flex; align-items: center; gap: var(--space-3);
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+    background: var(--field-bg);
+    cursor: pointer;
+    transition: border-color var(--dur-base) var(--ease-out), background var(--dur-base) var(--ease-out);
+  }
+  .file-input:hover { border-color: var(--line-strong); background: var(--surface-2); }
+  .file-input .file-cta {
+    border-radius: var(--radius-sm);
+    padding: 6px 10px;
+    font-weight: 800; font-size: 12px;
+    background: rgba(110,140,255,0.18); color: var(--blue);
+    border: 1px solid rgba(110,140,255,0.32);
+  }
+  .file-input .file-meta { color: var(--muted); font-size: 13px; }
+
+  /* === Steps === */
+  .stepper { display: flex; gap: var(--space-2); align-items: center; }
+  .stepper .step {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--muted); font-size: 12px; font-weight: 800;
+  }
+  .stepper .step .dot {
+    width: 22px; height: 22px; border-radius: 999px;
+    display: grid; place-items: center;
+    background: var(--surface); border: 1px solid var(--line);
+    color: var(--muted);
+  }
+  .stepper .step.active .dot {
+    background: linear-gradient(135deg, var(--cyan), var(--blue));
+    color: white; border-color: transparent;
+  }
+  .stepper .step.done .dot { color: var(--green); border-color: rgba(88,214,141,0.4); background: var(--success-soft); }
+  .stepper .step.active { color: var(--text); }
+  .stepper .sep { width: 18px; height: 1px; background: var(--line); }
+
+  /* === Confirm dialog === */
+  .confirm {
+    border-radius: var(--radius-xl);
+    padding: var(--space-5);
+    background: var(--card);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    display: grid; gap: var(--space-3);
+    max-width: 420px;
+  }
+  .confirm h3 { font-size: 18px; letter-spacing: -0.02em; }
+  .confirm p { color: var(--soft-text); font-size: 14px; }
+  .confirm .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+  .danger-soft-icon {
+    width: 44px; height: 44px;
+    border-radius: var(--radius-md);
+    background: var(--danger-soft);
+    border: 1px solid rgba(255,101,119,0.32);
+    display: grid; place-items: center;
+    color: var(--red);
+  }
+  .danger-soft-icon svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  /* === Helpers de demo === */
+  .stack { display: grid; gap: var(--space-3); }
+  .row { display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap; }
+  .pwd-wrap { position: relative; }
+  .pwd-wrap input { padding-right: 78px; }
+  .pwd-wrap .pwd-toggle {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    background: transparent; border: 0; color: var(--muted);
+    padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: 800;
+  }
+  .pwd-wrap .pwd-toggle:hover { background: var(--surface); color: var(--text); }
+  .strength-meter {
+    display: flex; gap: 4px; margin-top: 6px;
+  }
+  .strength-meter span {
+    flex: 1; height: 4px; border-radius: 999px; background: var(--surface);
+  }
+  .strength-meter span.on { background: var(--green); }
+
+  /* skeleton row */
+  .skeleton-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4);
+    border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--card); }
+  .skeleton-row .skeleton.avatar { width: 44px; height: 44px; border-radius: 999px; }
+  .skeleton-row .skeleton.line { height: 12px; }
+  .skeleton-row .col { flex: 1; display: grid; gap: 8px; }
+
+  .footer-note {
+    color: var(--muted); font-size: 13px; text-align: center;
+    padding: var(--space-5); border-top: 1px solid var(--line);
+  }
+</style>
+</head>
+<body>
+<main class="doc">
+
+  <header class="doc-head">
+    <div class="row">
+      <div class="brand-mark">AT</div>
+      <div>
+        <p style="color:var(--muted);text-transform:uppercase;letter-spacing:0.16em;font-size:11px;font-weight:800;margin-bottom:4px;">Acid Talent OS · Propuesta</p>
+        <h1>Mejoras UI/UX manteniendo el estilo actual</h1>
+        <p>Comparativa <strong style="color:var(--red);">antes</strong> vs <strong style="color:var(--green);">después</strong> sobre componentes reales del sistema. Misma paleta, mismo glassmorphism.</p>
+      </div>
+    </div>
+    <div class="legend-pills">
+      <span class="legend-pill before">Estado actual</span>
+      <span class="legend-pill after">Propuesta</span>
+    </div>
+  </header>
+
+  <!-- ============================================ -->
+  <!-- 1. FORM FIELDS (LOGIN)                      -->
+  <!-- ============================================ -->
+  <section class="section">
+    <div class="section-title">
+      <span class="step-pill">01 · Formularios</span>
+      <h2>Campos de login</h2>
+      <p>Labels asociadas, autocomplete, requeridos visibles, show/hide password, validación inline en blur. Mantiene el mismo radius/colores.</p>
+    </div>
+
+    <div class="compare-grid">
+      <!-- BEFORE -->
+      <article class="card">
+        <span class="card-tag before">Antes</span>
+        <div class="stack">
+          <label>Email</label>
+          <input type="email" placeholder="tu@email.com" value="ana@" />
+          <label>Contraseña</label>
+          <input type="password" placeholder="Tu contraseña" />
+          <div class="inline-error" style="background: rgba(255,101,119,0.13);">No se pudo iniciar sesión.</div>
+          <button class="primary-action">Entrar al portal</button>
+        </div>
+        <ul class="notes">
+          <li>Label sin <code>for</code>/<code>id</code> → no asociado.</li>
+          <li>Sin <code>autocomplete</code>, sin <code>aria-required</code>.</li>
+          <li>Error genérico, ubicado al final, sin ícono.</li>
+          <li>No hay validación al salir del campo.</li>
+        </ul>
+      </article>
+
+      <!-- AFTER -->
+      <article class="card">
+        <span class="card-tag after">Después</span>
+        <div class="stack">
+          <div class="field has-error">
+            <div class="field-label-row">
+              <label class="field-label" for="email-new">Email<span class="req" aria-hidden="true">*</span></label>
+            </div>
+            <input id="email-new" type="email" autocomplete="email" inputmode="email" placeholder="tu@email.com" value="ana@" aria-required="true" aria-invalid="true" aria-describedby="email-err" />
+            <div class="field-error" id="email-err" role="alert">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+              Formato de email inválido. Faltan caracteres después de "@".
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="field-label-row">
+              <label class="field-label" for="pwd-new">Contraseña<span class="req" aria-hidden="true">*</span></label>
+              <a href="#" class="field-hint" style="color:var(--cyan);">¿Olvidaste tu contraseña?</a>
+            </div>
+            <div class="pwd-wrap">
+              <input id="pwd-new" type="password" autocomplete="current-password" placeholder="Mínimo 8 caracteres" aria-required="true" />
+              <button type="button" class="pwd-toggle" aria-label="Mostrar contraseña" onclick="
+                const i=this.previousElementSibling;
+                if(i.type==='password'){i.type='text';this.textContent='Ocultar';}
+                else{i.type='password';this.textContent='Mostrar';}">Mostrar</button>
+            </div>
+            <small class="field-helper">Tu contraseña actual del portal Acid Talent.</small>
+          </div>
+
+          <button class="primary-action">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg>
+            Entrar al portal
+          </button>
+        </div>
+        <ul class="notes">
+          <li>Label asociada + <code>aria-required</code> + <code>aria-invalid</code>.</li>
+          <li>Autocomplete correcto → mejor UX en password managers.</li>
+          <li>Validación al blur con mensaje específico y accionable.</li>
+          <li>Show/hide password con botón accesible.</li>
+          <li>Link de recuperación en la línea del label (no enterrado).</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <!-- ============================================ -->
+  <!-- 2. FILE INPUT + STEPPER (CREATE SEARCH)    -->
+  <!-- ============================================ -->
+  <section class="section">
+    <div class="section-title">
+      <span class="step-pill">02 · Formularios</span>
+      <h2>Crear búsqueda (upload + pasos)</h2>
+      <p>Reemplazar input file nativo (rompe el tema) por dropzone consistente. Stepper visual real, no solo etiquetas.</p>
+    </div>
+
+    <div class="compare-grid">
+      <article class="card">
+        <span class="card-tag before">Antes</span>
+        <div class="stack">
+          <div style="font-size:11px;font-weight:900;color:var(--cyan);text-transform:uppercase;letter-spacing:0.08em;border:1px solid var(--line-strong);background:rgba(68,215,255,0.1);border-radius:999px;padding:7px 11px;width:fit-content;">PASO 1 · CLIENTE Y PUESTO</div>
+          <select><option>Acme Corp</option></select>
+          <input placeholder="Título del puesto" />
+          <div style="font-size:11px;font-weight:900;color:var(--cyan);text-transform:uppercase;letter-spacing:0.08em;border:1px solid var(--line-strong);background:rgba(68,215,255,0.1);border-radius:999px;padding:7px 11px;width:fit-content;">PASO 2 · DOCUMENTO</div>
+          <input type="file" accept="application/pdf,.docx" />
+          <button class="primary-action" style="width:fit-content;">Crear y revisar con IA</button>
+        </div>
+        <ul class="notes">
+          <li>Pasos son pills sueltos, sin progreso visual.</li>
+          <li>Input file nativo rompe el dark theme.</li>
+          <li>Sin labels: solo placeholder en select.</li>
+          <li>Sin indicación de tamaño máximo o formato aceptado claro.</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <span class="card-tag after">Después</span>
+        <div class="stack">
+          <div class="stepper" aria-label="Progreso del formulario">
+            <div class="step done">
+              <span class="dot">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>
+              </span>
+              Cliente
+            </div>
+            <span class="sep"></span>
+            <div class="step active"><span class="dot">2</span>Documento</div>
+            <span class="sep"></span>
+            <div class="step"><span class="dot">3</span>Revisión IA</div>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="cli-new">Cliente<span class="req">*</span></label>
+            <select id="cli-new"><option>Acme Corp</option></select>
+            <small class="field-helper">Se filtrarán las búsquedas que verán comercial y talent.</small>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="ttl-new">Título del puesto<span class="req">*</span></label>
+            <input id="ttl-new" placeholder="Ej: Senior Backend Engineer" />
+          </div>
+
+          <div class="field">
+            <label class="field-label">Job description o documento</label>
+            <label class="file-input" tabindex="0">
+              <span class="file-cta">Elegir archivo</span>
+              <span class="file-meta">Arrastrá un PDF o DOCX (máx. 10 MB)</span>
+              <input type="file" accept="application/pdf,.docx" hidden />
+            </label>
+            <small class="field-helper">También podés pegar el texto en el campo inferior.</small>
+          </div>
+
+          <button class="primary-action" style="width:fit-content;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>
+            Crear y revisar con IA
+          </button>
+        </div>
+        <ul class="notes">
+          <li>Stepper visible siempre, indica progreso real.</li>
+          <li>Dropzone estilada, hereda colores del tema.</li>
+          <li>Labels + helpers en cada campo. Required marker.</li>
+          <li>Indica tamaño y formato esperado.</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <!-- ============================================ -->
+  <!-- 3. FEEDBACK MESSAGES                        -->
+  <!-- ============================================ -->
+  <section class="section">
+    <div class="section-title">
+      <span class="step-pill">03 · Feedback</span>
+      <h2>Mensajes de error, éxito e información</h2>
+      <p>Hoy todos comparten el mismo estilo (rojo). Propuesta: tres variantes claras con icono, mantiene la familia visual.</p>
+    </div>
+
+    <div class="compare-grid">
+      <article class="card">
+        <span class="card-tag before">Antes</span>
+        <div class="stack">
+          <div class="inline-error">No se pudo crear el usuario.</div>
+          <div class="inline-error" style="color:#fff;">Usuario creado correctamente.</div>
+          <div class="inline-error">Contraseña actualizada para ana@acidlabs.com.</div>
+        </div>
+        <ul class="notes">
+          <li>Éxito y error usan el mismo componente rojo.</li>
+          <li>Sin icono → menos escaneable.</li>
+          <li>Sin auto-dismiss; el usuario tiene que ignorarlos.</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <span class="card-tag after">Después</span>
+        <div class="stack">
+          <div class="inline-error" role="alert">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+            <div>
+              <strong>No se pudo crear el usuario.</strong><br/>
+              El email ya está registrado. Probá con otro o reactivá el existente.
+            </div>
+          </div>
+          <div class="inline-success" role="status">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
+            <div>
+              <strong>Usuario creado correctamente.</strong><br/>
+              Le enviamos el mail de bienvenida con la contraseña temporal.
+            </div>
+          </div>
+          <div class="inline-info">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            <div>
+              <strong>Contraseña actualizada.</strong> Se cerraron las sesiones activas del usuario.
+            </div>
+          </div>
+
+          <div class="toast-wrap">
+            <div class="toast success" role="status">
+              <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
+              <div class="toast-body">
+                <strong>Cambios guardados</strong>
+                <span>Se sincronizó con Google Calendar.</span>
+              </div>
+              <button class="toast-close" aria-label="Cerrar">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <ul class="notes">
+          <li>3 variantes semánticas: error · éxito · info.</li>
+          <li>Icono + título + detalle accionable.</li>
+          <li>Toast flotante con auto-dismiss + close manual, <code>role="status"</code> para screen readers.</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <!-- ============================================ -->
+  <!-- 4. CONFIRM DIALOG (replaces window.confirm) -->
+  <!-- ============================================ -->
+  <section class="section">
+    <div class="section-title">
+      <span class="step-pill">04 · Acciones destructivas</span>
+      <h2>Confirmación de eliminación</h2>
+      <p>Hoy se usa <code>window.confirm()</code> nativo (rompe el tema y la a11y). Propuesta: modal coherente con tipografía de peligro.</p>
+    </div>
+
+    <div class="compare-grid">
+      <article class="card">
+        <span class="card-tag before">Antes</span>
+        <div class="stack">
+          <div style="background:#1d2330; border-radius: 6px; padding: 16px; border: 1px solid #2c3447; max-width: 380px; box-shadow: 0 8px 24px rgba(0,0,0,0.6);">
+            <p style="font-family: system-ui; color:#e0e0e0; margin-bottom: 14px; font-size: 14px;">localhost:5173 dice</p>
+            <p style="font-family: system-ui; color:#fff; margin-bottom: 18px; font-size: 14px;">¿Eliminar definitivamente a ana@acidlabs.com?</p>
+            <div style="display:flex; gap:8px; justify-content:flex-end;">
+              <button style="background:#2c3447; color:#fff; border:1px solid #3a4258; padding: 6px 14px; border-radius: 4px; font-size:13px;">Cancelar</button>
+              <button style="background:#3b82f6; color:#fff; padding: 6px 14px; border-radius: 4px; font-size:13px;">Aceptar</button>
+            </div>
+          </div>
+        </div>
+        <ul class="notes">
+          <li>Estilo del navegador, rompe el branding.</li>
+          <li>No diferencia destructivo: botón principal en azul.</li>
+          <li>No bloquea pestañas hermanas; no es focusable consistentemente.</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <span class="card-tag after">Después</span>
+        <div class="stack">
+          <div class="confirm" role="alertdialog" aria-labelledby="cdt" aria-describedby="cdd">
+            <div class="row" style="align-items: flex-start; gap: var(--space-3);">
+              <div class="danger-soft-icon">
+                <svg viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+              </div>
+              <div>
+                <h3 id="cdt">Eliminar a ana@acidlabs.com</h3>
+                <p id="cdd">Esta acción es permanente y no se puede deshacer. El historial de usuarios queda anonimizado.</p>
+              </div>
+            </div>
+            <div class="field">
+              <label class="field-label" for="cd-conf">Para confirmar, escribí <code style="color:var(--red);">ELIMINAR</code></label>
+              <input id="cd-conf" placeholder="ELIMINAR" />
+            </div>
+            <div class="actions">
+              <button class="ghost-action">Cancelar</button>
+              <button class="danger-action">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                Eliminar definitivamente
+              </button>
+            </div>
+          </div>
+        </div>
+        <ul class="notes">
+          <li>Modal coherente con el sistema, glassmorphism + radius.</li>
+          <li>Botón destructivo en rojo, primario "Cancelar" en ghost (safe default).</li>
+          <li>Confirmación por texto para acciones críticas.</li>
+          <li><code>role="alertdialog"</code>, foco bloqueado, ESC para cerrar.</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <!-- ============================================ -->
+  <!-- 5. EMPTY STATE & SKELETON                  -->
+  <!-- ============================================ -->
+  <section class="section">
+    <div class="section-title">
+      <span class="step-pill">05 · Listas</span>
+      <h2>Empty state y loading skeleton</h2>
+      <p>Hoy "Cargando..." en texto y empty mínimo. Propuesta: skeletons + empty accionable.</p>
+    </div>
+
+    <div class="compare-grid">
+      <article class="card">
+        <span class="card-tag before">Antes</span>
+        <div class="stack">
+          <div style="padding: 22px 18px; text-align:center; color: var(--muted); border: 1px dashed var(--line); border-radius: 18px;">
+            <strong style="color: var(--text); font-size:15px; display:block;">Sin resultados</strong>
+            <span>No hay notificaciones.</span>
+          </div>
+          <div style="color:var(--muted); padding: 14px;">Cargando candidatos...</div>
+        </div>
+        <ul class="notes">
+          <li>Empty estático, sin CTA.</li>
+          <li>Loading textual sin feedback de progreso.</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <span class="card-tag after">Después</span>
+        <div class="stack">
+          <div class="empty-state">
+            <div class="empty-illu">
+              <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </div>
+            <strong>Sin notificaciones pendientes</strong>
+            <span>Cuando un candidato avance o se programe una entrevista vas a verlo acá.</span>
+            <button class="ghost-action" style="margin-top:8px;">Ver actividad reciente</button>
+          </div>
+          <div class="skeleton-row">
+            <div class="skeleton avatar"></div>
+            <div class="col">
+              <div class="skeleton line" style="width: 60%;"></div>
+              <div class="skeleton line" style="width: 35%;"></div>
+            </div>
+            <div class="skeleton line" style="width: 80px; height: 28px; border-radius: 999px;"></div>
+          </div>
+          <div class="skeleton-row">
+            <div class="skeleton avatar"></div>
+            <div class="col">
+              <div class="skeleton line" style="width: 50%;"></div>
+              <div class="skeleton line" style="width: 30%;"></div>
+            </div>
+            <div class="skeleton line" style="width: 80px; height: 28px; border-radius: 999px;"></div>
+          </div>
+        </div>
+        <ul class="notes">
+          <li>Empty con icono + copy contextual + CTA accionable.</li>
+          <li>Skeleton refleja la forma real de las filas → percepción de carga más rápida.</li>
+          <li>Reserva el espacio → evita layout shift (CLS).</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <!-- ============================================ -->
+  <!-- 6. TOPBAR & ICONOS                          -->
+  <!-- ============================================ -->
+  <section class="section">
+    <div class="section-title">
+      <span class="step-pill">06 · Topbar</span>
+      <h2>Topbar con iconos coherentes</h2>
+      <p>Hoy botones de acción usan texto ("Claro / Oscuro / Actualizar"). Propuesta: SVG icon + tooltip + notification pill con campana.</p>
+    </div>
+
+    <div class="compare-grid">
+      <article class="card">
+        <span class="card-tag before">Antes</span>
+        <header class="topbar" style="margin-top: 0;">
+          <div>
+            <p class="eyebrow">Talent</p>
+            <h1>Búsquedas activas</h1>
+          </div>
+          <div class="topbar-controls">
+            <input placeholder="Buscar..." style="min-width: 200px;" />
+            <button class="ghost-action">Claro</button>
+            <button class="ghost-action">Actualizar</button>
+            <span style="min-width:32px;height:32px;border-radius:999px;display:inline-grid;place-items:center;background:rgba(248,193,74,0.18);color:var(--amber);font-weight:800;">3</span>
+          </div>
+        </header>
+        <ul class="notes">
+          <li>Texto en botones de acción rápida ocupa espacio.</li>
+          <li>Notification pill siempre amber, no distingue 0 de N.</li>
+          <li>Sin tooltips / sin aria-labels en pill.</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <span class="card-tag after">Después</span>
+        <header class="topbar" style="margin-top: 0;">
+          <div>
+            <p class="eyebrow">Talent</p>
+            <h1>Búsquedas activas</h1>
+          </div>
+          <div class="topbar-controls">
+            <input class="search-input" placeholder="Buscar búsquedas, candidatos o clientes..." />
+            <button class="icon-btn" aria-label="Cambiar a modo claro" title="Cambiar a modo claro">
+              <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            </button>
+            <button class="icon-btn" aria-label="Actualizar datos" title="Actualizar datos">
+              <svg viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            </button>
+            <button class="notification-pill" aria-label="3 notificaciones nuevas">
+              <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              <span class="count">3</span>
+            </button>
+          </div>
+        </header>
+        <ul class="notes">
+          <li>Iconos SVG consistentes (stroke 1.8), labels accesibles.</li>
+          <li>Search input con icono de lupa integrado.</li>
+          <li>Pill de notificaciones con badge numérico y bell icon.</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <!-- ============================================ -->
+  <!-- 7. BADGES & STATUS                          -->
+  <!-- ============================================ -->
+  <section class="section">
+    <div class="section-title">
+      <span class="step-pill">07 · Badges</span>
+      <h2>Estados con icono</h2>
+      <p>Agregar icono no decorativo refuerza la lectura del estado y cumple "no usar solo color para significado".</p>
+    </div>
+
+    <div class="compare-grid">
+      <article class="card">
+        <span class="card-tag before">Antes</span>
+        <div class="row">
+          <span class="badge ok">Aprobado</span>
+          <span class="badge warn">En revisión</span>
+          <span class="badge danger">Descartado</span>
+          <span class="badge">Sin estado</span>
+        </div>
+        <ul class="notes">
+          <li>Color es el único indicador.</li>
+          <li>Daltonismo: rojo/verde son los problemáticos.</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <span class="card-tag after">Después</span>
+        <div class="row">
+          <span class="badge ok">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l5 5L20 7"/></svg>
+            Aprobado
+          </span>
+          <span class="badge warn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            En revisión
+          </span>
+          <span class="badge danger">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            Descartado
+          </span>
+          <span class="badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+            Sin estado
+          </span>
+        </div>
+        <ul class="notes">
+          <li>Cada estado tiene icono significativo (check, reloj, cruz).</li>
+          <li>Lectura accesible: color + forma + texto.</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <!-- ============================================ -->
+  <!-- 8. ENTITY ROW                               -->
+  <!-- ============================================ -->
+  <section class="section">
+    <div class="section-title">
+      <span class="step-pill">08 · Listas</span>
+      <h2>Fila de candidato con jerarquía y acciones primarias</h2>
+      <p>Misma fila, mejor jerarquía visual: nombre + chips de info + acciones primarias visibles y menú "..." para secundarias.</p>
+    </div>
+
+    <div class="compare-grid">
+      <article class="card">
+        <span class="card-tag before">Antes</span>
+        <article class="entity-row">
+          <div>
+            <strong>María González</strong>
+            <span>Senior Frontend Engineer · Acme · CV subido hace 3d</span>
+          </div>
+          <div class="row-actions">
+            <span class="badge warn">en_revision</span>
+            <span class="badge ok">Match IA 87%</span>
+            <button class="ghost-action">Abrir</button>
+            <button class="ghost-action">Componer mail</button>
+            <button class="danger-action">Descartar</button>
+          </div>
+        </article>
+        <ul class="notes">
+          <li>Acciones compiten visualmente.</li>
+          <li>Estado en raw (<code>en_revision</code>) en vez de "En revisión".</li>
+          <li>"Descartar" en rojo siempre visible → riesgo de click accidental.</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <span class="card-tag after">Después</span>
+        <article class="entity-row">
+          <div style="display:flex; align-items:center; gap: var(--space-3);">
+            <div style="width:44px;height:44px;border-radius:999px;display:grid;place-items:center;background:linear-gradient(135deg,var(--cyan),var(--blue));color:white;font-weight:900;">MG</div>
+            <div>
+              <strong>María González</strong>
+              <div style="display:flex; gap:6px; margin-top:4px; flex-wrap:wrap;">
+                <span class="badge ok">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+                  Match IA 87%
+                </span>
+                <span class="badge warn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                  En revisión
+                </span>
+                <span style="color: var(--muted); font-size: 12px; align-self:center;">CV subido hace 3d</span>
+              </div>
+            </div>
+          </div>
+          <div class="row-actions">
+            <button class="primary-action" style="padding:8px 14px; font-size:13px;">
+              Abrir
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+            </button>
+            <button class="icon-btn" aria-label="Componer mail" title="Componer mail">
+              <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="m22 6-10 7L2 6"/></svg>
+            </button>
+            <button class="icon-btn" aria-label="Más acciones" title="Más acciones">
+              <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+            </button>
+          </div>
+        </article>
+        <ul class="notes">
+          <li>Avatar con iniciales en gradiente del brand.</li>
+          <li>Estado y match son chips con icono (no solo color).</li>
+          <li>Una sola acción primaria visible ("Abrir"). Mail y destructivas detrás de icon-btn / menu.</li>
+          <li>Texto del estado legible ("En revisión" no <code>en_revision</code>).</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <!-- ============================================ -->
+  <!-- 9. ADMIN PASSWORD CON STRENGTH METER       -->
+  <!-- ============================================ -->
+  <section class="section">
+    <div class="section-title">
+      <span class="step-pill">09 · Admin</span>
+      <h2>Crear usuario con feedback de seguridad</h2>
+      <p>Strength meter + helper persistente + agrupación lógica de campos.</p>
+    </div>
+
+    <div class="compare-grid">
+      <article class="card">
+        <span class="card-tag before">Antes</span>
+        <div class="stack">
+          <input placeholder="Nombre completo" />
+          <input placeholder="Email" />
+          <input placeholder="Contraseña inicial" />
+          <select><option>CLIENTE</option></select>
+          <label style="display:flex;gap:8px;color:var(--muted);"><input type="checkbox" style="width:auto;" /> Debe cambiar contraseña</label>
+          <label style="display:flex;gap:8px;color:var(--muted);"><input type="checkbox" style="width:auto;" checked /> Activo</label>
+          <button class="primary-action" style="width:fit-content;">Crear usuario</button>
+        </div>
+        <ul class="notes">
+          <li>Placeholders sin labels.</li>
+          <li>Sin feedback de fuerza de contraseña.</li>
+          <li>Checks van apilados sin grupo lógico.</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <span class="card-tag after">Después</span>
+        <div class="stack">
+          <div class="field">
+            <label class="field-label" for="usr-name">Nombre completo</label>
+            <input id="usr-name" placeholder="Ej: Ana Pérez" autocomplete="name" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="usr-email">Email<span class="req">*</span></label>
+            <input id="usr-email" type="email" placeholder="ana@acidlabs.com" autocomplete="off" inputmode="email" />
+            <small class="field-helper">El usuario recibirá un mail de bienvenida.</small>
+          </div>
+          <div class="field">
+            <label class="field-label" for="usr-pwd">Contraseña inicial<span class="req">*</span></label>
+            <div class="pwd-wrap">
+              <input id="usr-pwd" type="password" placeholder="Mínimo 8 caracteres" autocomplete="new-password" value="acid123" />
+              <button type="button" class="pwd-toggle">Mostrar</button>
+            </div>
+            <div class="strength-meter" aria-hidden="true">
+              <span class="on"></span><span class="on"></span><span></span><span></span>
+            </div>
+            <small class="field-helper">Media: agregá mayúsculas, números y símbolos.</small>
+          </div>
+          <div class="field">
+            <label class="field-label" for="usr-role">Rol</label>
+            <select id="usr-role"><option>Cliente</option><option>Comercial</option><option>Talent</option><option>Admin</option></select>
+          </div>
+          <fieldset style="border: 1px solid var(--line); border-radius: var(--radius-md); padding: var(--space-3); display:grid; gap:10px;">
+            <legend style="padding: 0 6px; color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;">Opciones</legend>
+            <label style="display:flex;gap:10px;color:var(--soft-text);align-items:center;"><input type="checkbox" style="width:auto;" /> Debe cambiar contraseña en el primer ingreso</label>
+            <label style="display:flex;gap:10px;color:var(--soft-text);align-items:center;"><input type="checkbox" style="width:auto;" checked /> Cuenta activa al crearse</label>
+          </fieldset>
+          <button class="primary-action" style="width:fit-content;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
+            Crear usuario
+          </button>
+        </div>
+        <ul class="notes">
+          <li>Labels + helpers + autocomplete.</li>
+          <li>Strength meter para contraseña.</li>
+          <li>Checks agrupados en <code>fieldset</code> semántico.</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <!-- ============================================ -->
+  <!-- 10. TOKENS                                  -->
+  <!-- ============================================ -->
+  <section class="section">
+    <div class="section-title">
+      <span class="step-pill">10 · Sistema</span>
+      <h2>Tokens nuevos propuestos</h2>
+      <p>Se suman a <code>:root</code> sin tocar los existentes. Los valores actuales siguen funcionando.</p>
+    </div>
+    <article class="card">
+      <div style="display:grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+        <div>
+          <p class="eyebrow" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.16em;font-weight:800;margin-bottom:8px;">Spacing</p>
+          <div style="display:grid;gap:6px;font-family:monospace;font-size:12px;color:var(--soft-text);">
+            <div>--space-1: 4px</div>
+            <div>--space-2: 8px</div>
+            <div>--space-3: 12px</div>
+            <div>--space-4: 16px</div>
+            <div>--space-5: 20px</div>
+            <div>--space-6: 24px</div>
+            <div>--space-7: 32px</div>
+            <div>--space-8: 40px</div>
+          </div>
+        </div>
+        <div>
+          <p class="eyebrow" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.16em;font-weight:800;margin-bottom:8px;">Radius</p>
+          <div style="display:grid;gap:6px;font-family:monospace;font-size:12px;color:var(--soft-text);">
+            <div>--radius-sm: 10px</div>
+            <div>--radius-md: 14px</div>
+            <div>--radius-lg: 18px</div>
+            <div>--radius-xl: 22px <em style="color:var(--muted);">(actual)</em></div>
+            <div>--radius-2xl: 28px</div>
+            <div>--pill: 999px</div>
+          </div>
+        </div>
+        <div>
+          <p class="eyebrow" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.16em;font-weight:800;margin-bottom:8px;">Feedback soft</p>
+          <div style="display:grid;gap:6px;font-family:monospace;font-size:12px;color:var(--soft-text);">
+            <div>--success-soft</div>
+            <div>--warn-soft</div>
+            <div>--danger-soft</div>
+            <div>--info-soft</div>
+          </div>
+        </div>
+        <div>
+          <p class="eyebrow" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.16em;font-weight:800;margin-bottom:8px;">Motion</p>
+          <div style="display:grid;gap:6px;font-family:monospace;font-size:12px;color:var(--soft-text);">
+            <div>--ease-out: cubic-bezier(.2,.8,.2,1)</div>
+            <div>--dur-fast: 140ms</div>
+            <div>--dur-base: 220ms</div>
+            <div>--dur-slow: 320ms</div>
+          </div>
+        </div>
+        <div>
+          <p class="eyebrow" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.16em;font-weight:800;margin-bottom:8px;">A11y</p>
+          <div style="display:grid;gap:6px;font-family:monospace;font-size:12px;color:var(--soft-text);">
+            <div>--focus-ring: 0 0 0 3px<br/>&nbsp;&nbsp;rgba(68,215,255,.4)</div>
+          </div>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <footer class="footer-note">
+    Mockup estático generado para revisión · Acid Talent OS · Misma paleta, mismo glassmorphism · v1
+  </footer>
+
+</main>
+</body>
+</html>

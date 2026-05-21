@@ -1,0 +1,63 @@
+services:
+  db:
+    image: postgres:16
+    container_name: acid_talent_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: acid_talent
+    ports:
+      - "5432:5432"
+    volumes:
+      - acid_talent_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d acid_talent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+    container_name: acid_talent_backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/acid_talent
+      JWT_SECRET: ${JWT_SECRET:-change-me-deploy}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-480}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_API_BASE_URL: ${AI_API_BASE_URL:-https://api.openai.com/v1}
+      AI_MODEL: ${AI_MODEL:-gpt-4o-mini}
+      AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-45}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-no-reply@acidtalent.local}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - acid_talent_uploads:/app/uploads
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: acid_talent_frontend
+    restart: unless-stopped
+    environment:
+      BACKEND_PROXY_BASE: http://backend:8000
+      BACKEND_PROXY_HOST: backend:8000
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  acid_talent_db:
+  acid_talent_uploads:

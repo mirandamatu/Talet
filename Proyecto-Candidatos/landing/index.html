@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aptia — Software de recruiting para agencias LATAM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css" />
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #FAF7F2;
+      color: #0d192b;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+    a { text-decoration: none; color: inherit; }
+    img { display: block; max-width: 100%; }
+
+    /* ── Tokens ── */
+    :root {
+      --crema:   #FAF7F2;
+      --verde:   #10B981;
+      --bosque:  #059669;
+      --forest:  #064E3B;
+      --noche:   #0d192b;
+      --borde:   #E8E0D4;
+      --gris:    #6B7280;
+      --crema-2: #F0EBE3;
+    }
+
+    /* ── Utilities ── */
+    .container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+    .section { padding: 96px 0; }
+    .section-alt { background: var(--crema-2); }
+    .section-dark { background: var(--noche); color: #fff; }
+    .section-forest { background: var(--forest); color: #fff; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(16,185,129,.12); color: var(--bosque);
+      font-size: 13px; font-weight: 600; letter-spacing: .02em;
+      padding: 5px 14px; border-radius: 100px;
+      border: 1px solid rgba(16,185,129,.25);
+      margin-bottom: 20px;
+    }
+    .badge i { font-size: 14px; }
+    .tag {
+      display: inline-block; background: rgba(255,255,255,.1);
+      color: rgba(255,255,255,.8); font-size: 12px; font-weight: 600;
+      letter-spacing: .08em; text-transform: uppercase;
+      padding: 4px 12px; border-radius: 100px;
+      border: 1px solid rgba(255,255,255,.15); margin-bottom: 20px;
+    }
+    h1, h2, h3, h4 { font-weight: 700; line-height: 1.15; letter-spacing: -.025em; }
+    h1 { font-size: clamp(36px, 5vw, 60px); }
+    h2 { font-size: clamp(28px, 4vw, 44px); }
+    h3 { font-size: 20px; font-weight: 600; }
+    .lead { font-size: 18px; line-height: 1.7; color: var(--gris); max-width: 600px; }
+    .lead-white { color: rgba(255,255,255,.7); }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 14px 28px; border-radius: 10px;
+      font-size: 15px; font-weight: 600; cursor: pointer;
+      border: none; transition: all .2s;
+    }
+    .btn-primary {
+      background: var(--verde); color: #fff;
+    }
+    .btn-primary:hover { background: var(--bosque); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16,185,129,.35); }
+    .btn-outline {
+      background: transparent; color: var(--noche);
+      border: 1.5px solid var(--borde);
+    }
+    .btn-outline:hover { border-color: var(--noche); }
+    .btn-white {
+      background: #fff; color: var(--forest);
+    }
+    .btn-white:hover { background: var(--crema); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,.12); }
+    .btn-outline-white {
+      background: transparent; color: #fff;
+      border: 1.5px solid rgba(255,255,255,.35);
+    }
+    .btn-outline-white:hover { border-color: rgba(255,255,255,.7); }
+    .btn-lg { padding: 16px 36px; font-size: 16px; }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(250,247,242,.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--borde);
+      padding: 0 24px;
+    }
+    .nav-inner {
+      max-width: 1120px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 68px; gap: 32px;
+    }
+    .logo {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 22px; font-weight: 700; letter-spacing: -.04em; color: var(--forest);
+    }
+    .nav-links {
+      display: flex; align-items: center; gap: 28px;
+      list-style: none; font-size: 14px; font-weight: 500; color: var(--gris);
+    }
+    .nav-links a:hover { color: var(--noche); }
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+
+    /* ── HERO ── */
+    .hero {
+      padding: 100px 0 80px;
+      text-align: center;
+    }
+    .hero h1 {
+      max-width: 820px; margin: 0 auto 24px;
+      color: var(--noche);
+    }
+    .hero h1 span { color: var(--verde); }
+    .hero .lead { margin: 0 auto 40px; text-align: center; max-width: 560px; }
+    .hero-ctas { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+    .hero-footnote {
+      margin-top: 20px; font-size: 13px; color: var(--gris);
+      display: flex; align-items: center; justify-content: center; gap: 16px;
+    }
+    .hero-footnote span { display: flex; align-items: center; gap: 5px; }
+    .hero-footnote i { color: var(--verde); font-size: 14px; }
+
+    /* ── STATS ── */
+    .stats-bar {
+      border-top: 1px solid var(--borde);
+      border-bottom: 1px solid var(--borde);
+      padding: 48px 0;
+      background: var(--crema);
+    }
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 0; text-align: center;
+    }
+    .stat-item {
+      padding: 0 24px;
+      border-right: 1px solid var(--borde);
+    }
+    .stat-item:last-child { border-right: none; }
+    .stat-num {
+      font-size: 44px; font-weight: 700; letter-spacing: -.03em;
+      color: var(--forest); line-height: 1;
+    }
+    .stat-num span { color: var(--verde); }
+    .stat-label { font-size: 14px; color: var(--gris); margin-top: 8px; }
+
+    /* ── HOW IT WORKS ── */
+    .how-header { text-align: center; margin-bottom: 72px; }
+    .how-header h2 { margin-bottom: 16px; }
+    .steps { display: flex; flex-direction: column; gap: 0; position: relative; }
+    .steps::before {
+      content: '';
+      position: absolute; left: 39px; top: 48px; bottom: 48px;
+      width: 2px; background: var(--borde);
+    }
+    .step {
+      display: grid; grid-template-columns: 80px 1fr;
+      gap: 32px; align-items: flex-start;
+      padding: 32px 0;
+    }
+    .step-num {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: var(--crema); border: 2px solid var(--borde);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; font-weight: 700; color: var(--verde);
+      position: relative; z-index: 1; flex-shrink: 0;
+    }
+    .step-body h3 { margin-bottom: 10px; color: var(--noche); padding-top: 28px; }
+    .step-body p { color: var(--gris); max-width: 560px; line-height: 1.75; }
+    .step-tags {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px;
+    }
+    .step-tag {
+      font-size: 12px; font-weight: 600; color: var(--bosque);
+      background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.2);
+      padding: 4px 12px; border-radius: 6px;
+    }
+
+    /* ── FEATURES ── */
+    .features-header { text-align: center; margin-bottom: 64px; }
+    .features-header h2 { margin-bottom: 16px; }
+    .features-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+    .feature-card {
+      background: var(--crema); border: 1px solid var(--borde);
+      border-radius: 16px; padding: 32px;
+      transition: box-shadow .2s, transform .2s;
+    }
+    .feature-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,.07); }
+    .feature-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      background: var(--noche); color: var(--verde);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; margin-bottom: 20px;
+    }
+    .feature-card h3 { margin-bottom: 12px; }
+    .feature-card p { font-size: 15px; color: var(--gris); line-height: 1.7; }
+
+    /* Wide feature card */
+    .feature-card.wide {
+      grid-column: span 3;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 48px; align-items: center;
+      background: var(--noche); color: #fff;
+      border-color: transparent;
+    }
+    .feature-card.wide h3 { color: #fff; }
+    .feature-card.wide p { color: rgba(255,255,255,.6); }
+    .feature-card.wide .feature-icon { background: rgba(16,185,129,.15); }
+    .wide-bullets { display: flex; flex-direction: column; gap: 14px; margin-top: 20px; }
+    .wide-bullet {
+      display: flex; align-items: flex-start; gap: 12px;
+      font-size: 15px; color: rgba(255,255,255,.7);
+    }
+    .wide-bullet i { color: var(--verde); font-size: 18px; margin-top: 2px; flex-shrink: 0; }
+
+    /* ── WORKFLOW ── */
+    .workflow-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 64px; align-items: center;
+    }
+    .workflow-text h2 { margin-bottom: 20px; }
+    .workflow-text p { color: var(--gris); margin-bottom: 32px; line-height: 1.75; }
+    .workflow-items { display: flex; flex-direction: column; gap: 0; }
+    .workflow-item {
+      display: flex; gap: 20px; padding: 24px 0;
+      border-bottom: 1px solid var(--borde);
+    }
+    .workflow-item:last-child { border-bottom: none; }
+    .workflow-item-icon {
+      width: 44px; height: 44px; border-radius: 10px;
+      background: rgba(16,185,129,.1); color: var(--verde);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .workflow-item-text h4 { font-size: 15px; margin-bottom: 4px; }
+    .workflow-item-text p { font-size: 14px; color: var(--gris); }
+    .workflow-visual {
+      background: var(--noche); border-radius: 20px; padding: 32px;
+      position: relative; overflow: hidden;
+    }
+    .workflow-visual::before {
+      content: '';
+      position: absolute; top: -60px; right: -60px;
+      width: 200px; height: 200px; border-radius: 50%;
+      background: rgba(16,185,129,.08);
+    }
+    .pipeline-label {
+      font-size: 11px; font-weight: 600; letter-spacing: .08em;
+      text-transform: uppercase; color: rgba(255,255,255,.4);
+      margin-bottom: 16px;
+    }
+    .pipeline-stages {
+      display: flex; gap: 8px; margin-bottom: 24px;
+    }
+    .stage-chip {
+      font-size: 11px; font-weight: 600; padding: 4px 10px;
+      border-radius: 6px; white-space: nowrap;
+    }
+    .stage-chip.active { background: var(--verde); color: #fff; }
+    .stage-chip.muted { background: rgba(255,255,255,.08); color: rgba(255,255,255,.4); }
+    .cand-card {
+      background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px; padding: 16px; margin-bottom: 10px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .cand-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; flex-shrink: 0;
+    }
+    .cand-info { flex: 1; }
+    .cand-name { font-size: 13px; font-weight: 600; color: #fff; }
+    .cand-role { font-size: 11px; color: rgba(255,255,255,.4); }
+    .cand-score {
+      font-size: 12px; font-weight: 700; color: var(--verde);
+      background: rgba(16,185,129,.12); padding: 3px 8px; border-radius: 6px;
+    }
+    .cand-actions {
+      display: flex; gap: 6px; margin-top: 12px;
+    }
+    .cand-btn {
+      flex: 1; font-size: 11px; font-weight: 600; text-align: center;
+      padding: 6px; border-radius: 6px; cursor: pointer;
+    }
+    .cand-btn.move { background: var(--verde); color: #fff; }
+    .cand-btn.bank { background: rgba(255,255,255,.08); color: rgba(255,255,255,.5); }
+
+    /* ── PRICING ── */
+    .pricing-header { text-align: center; margin-bottom: 56px; }
+    .pricing-header h2 { margin-bottom: 16px; }
+    .pricing-header p { color: var(--gris); font-size: 17px; max-width: 520px; margin: 0 auto; }
+    .pricing-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 24px; align-items: start;
+    }
+    .plan-card {
+      background: var(--crema); border: 1.5px solid var(--borde);
+      border-radius: 20px; padding: 36px 32px;
+      position: relative; transition: box-shadow .2s;
+    }
+    .plan-card:hover { box-shadow: 0 16px 40px rgba(0,0,0,.08); }
+    .plan-card.featured {
+      border-color: var(--verde); background: var(--noche);
+      color: #fff;
+    }
+    .featured-badge {
+      position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+      background: var(--verde); color: #fff;
+      font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+      padding: 4px 16px; border-radius: 100px;
+    }
+    .plan-name { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gris); margin-bottom: 12px; }
+    .plan-card.featured .plan-name { color: rgba(255,255,255,.5); }
+    .plan-price { margin-bottom: 8px; }
+    .plan-price .amount {
+      font-size: 48px; font-weight: 700; letter-spacing: -.04em;
+      color: var(--noche); line-height: 1;
+    }
+    .plan-card.featured .amount { color: #fff; }
+    .plan-price .currency { font-size: 20px; font-weight: 600; vertical-align: top; padding-top: 10px; display: inline-block; }
+    .plan-price .period { font-size: 14px; color: var(--gris); margin-left: 4px; }
+    .plan-card.featured .period { color: rgba(255,255,255,.4); }
+    .plan-desc { font-size: 14px; color: var(--gris); margin-bottom: 28px; line-height: 1.6; }
+    .plan-card.featured .plan-desc { color: rgba(255,255,255,.5); }
+    .plan-divider { height: 1px; background: var(--borde); margin-bottom: 24px; }
+    .plan-card.featured .plan-divider { background: rgba(255,255,255,.1); }
+    .plan-features { display: flex; flex-direction: column; gap: 12px; margin-bottom: 32px; }
+    .plan-feature { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; }
+    .plan-feature i { color: var(--verde); font-size: 16px; flex-shrink: 0; margin-top: 2px; }
+    .plan-card.featured .plan-feature { color: rgba(255,255,255,.8); }
+    .plan-highlight {
+      background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.2);
+      border-radius: 8px; padding: 10px 14px;
+      font-size: 13px; color: var(--bosque); margin-bottom: 24px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .plan-highlight i { font-size: 15px; }
+    .plan-btn { width: 100%; justify-content: center; }
+
+    /* ── IMPLEMENTATION ── */
+    .impl-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+    .impl-card {
+      border-radius: 16px; padding: 32px;
+      background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08);
+    }
+    .impl-num {
+      font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+      color: var(--verde); margin-bottom: 16px;
+    }
+    .impl-card h3 { color: #fff; margin-bottom: 12px; }
+    .impl-card p { font-size: 15px; color: rgba(255,255,255,.5); line-height: 1.7; }
+    .impl-list { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+    .impl-item {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; color: rgba(255,255,255,.5);
+    }
+    .impl-item i { color: var(--verde); font-size: 14px; }
+
+    /* ── DEMO CTA ── */
+    .demo-box {
+      background: var(--forest); border-radius: 24px;
+      padding: 72px 64px; text-align: center;
+    }
+    .demo-box h2 { color: #fff; margin-bottom: 16px; }
+    .demo-box p { color: rgba(255,255,255,.65); font-size: 18px; margin-bottom: 40px; max-width: 500px; margin-left: auto; margin-right: auto; }
+    .demo-form { display: flex; gap: 12px; max-width: 480px; margin: 0 auto 24px; }
+    .demo-input {
+      flex: 1; padding: 14px 18px; border-radius: 10px;
+      border: 1.5px solid rgba(255,255,255,.15);
+      background: rgba(255,255,255,.08); color: #fff;
+      font-size: 15px; font-family: inherit; outline: none;
+      transition: border-color .2s;
+    }
+    .demo-input::placeholder { color: rgba(255,255,255,.4); }
+    .demo-input:focus { border-color: var(--verde); }
+    .demo-note { font-size: 13px; color: rgba(255,255,255,.4); display: flex; align-items: center; justify-content: center; gap: 16px; }
+    .demo-note span { display: flex; align-items: center; gap: 5px; }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--noche); border-top: 1px solid rgba(255,255,255,.06);
+      padding: 56px 24px 32px;
+    }
+    .footer-inner { max-width: 1120px; margin: 0 auto; }
+    .footer-top {
+      display: flex; justify-content: space-between; gap: 48px; margin-bottom: 48px;
+    }
+    .footer-brand { max-width: 280px; }
+    .footer-logo { color: #fff; margin-bottom: 14px; }
+    .footer-tagline { font-size: 14px; color: rgba(255,255,255,.4); line-height: 1.6; }
+    .footer-cols { display: flex; gap: 64px; }
+    .footer-col h4 {
+      font-size: 12px; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; color: rgba(255,255,255,.4); margin-bottom: 16px;
+    }
+    .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .footer-col ul a { font-size: 14px; color: rgba(255,255,255,.55); transition: color .15s; }
+    .footer-col ul a:hover { color: #fff; }
+    .footer-bottom {
+      border-top: 1px solid rgba(255,255,255,.06);
+      padding-top: 24px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .footer-copy { font-size: 13px; color: rgba(255,255,255,.25); }
+    .footer-legal { display: flex; gap: 24px; }
+    .footer-legal a { font-size: 13px; color: rgba(255,255,255,.25); }
+    .footer-legal a:hover { color: rgba(255,255,255,.6); }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .features-grid { grid-template-columns: 1fr 1fr; }
+      .feature-card.wide { grid-column: span 2; grid-template-columns: 1fr; }
+      .pricing-grid { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; }
+      .workflow-grid { grid-template-columns: 1fr; }
+      .impl-grid { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .stat-item:nth-child(2) { border-right: none; }
+      .footer-top { flex-direction: column; }
+    }
+    @media (max-width: 640px) {
+      .section { padding: 64px 0; }
+      .nav-links { display: none; }
+      .hero { padding: 64px 0 48px; }
+      .features-grid { grid-template-columns: 1fr; }
+      .feature-card.wide { grid-column: span 1; }
+      .steps::before { display: none; }
+      .step { grid-template-columns: 1fr; }
+      .step-num { display: none; }
+      .step-body h3 { padding-top: 0; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .demo-form { flex-direction: column; }
+      .demo-box { padding: 40px 24px; }
+      .footer-cols { flex-direction: column; gap: 32px; }
+      .footer-bottom { flex-direction: column; gap: 12px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─────────────────────── NAVBAR ─────────────────────── -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="logo">
+      <!-- Logo SVG -->
+      <svg width="32" height="32" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="40" cy="26" r="16" fill="none" stroke="#10B981" stroke-width="4.5"/>
+        <path d="M12,72 Q12,54 40,54 Q68,54 68,72" fill="none" stroke="#059669" stroke-width="4.5" stroke-linecap="round"/>
+      </svg>
+      aptia
+    </a>
+    <ul class="nav-links">
+      <li><a href="#como-funciona">Cómo funciona</a></li>
+      <li><a href="#funcionalidades">Funcionalidades</a></li>
+      <li><a href="#precios">Precios</a></li>
+      <li><a href="#contacto">Contacto</a></li>
+    </ul>
+    <div class="nav-right">
+      <a href="#" class="btn btn-outline" style="padding:10px 20px;font-size:14px;">Iniciar sesión</a>
+      <a href="#contacto" class="btn btn-primary" style="padding:10px 20px;font-size:14px;">Solicitar demo</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ─────────────────────── HERO ─────────────────────── -->
+<section class="hero">
+  <div class="container">
+    <div class="badge"><i class="ti ti-map-pin"></i> Diseñado para agencias de LATAM</div>
+    <h1>Gestioná tu agencia.<br /><span>Cerrá más posiciones.</span></h1>
+    <p class="lead">
+      Aptia es el software de recruiting que ordena tu pipeline, centraliza tus candidatos
+      y te da las herramientas para trabajar con múltiples clientes sin perder el hilo.
+    </p>
+    <div class="hero-ctas">
+      <a href="#contacto" class="btn btn-primary btn-lg">
+        <i class="ti ti-sparkles"></i> Empezar prueba gratis — 7 días
+      </a>
+      <a href="#como-funciona" class="btn btn-outline btn-lg">Ver cómo funciona</a>
+    </div>
+    <div class="hero-footnote">
+      <span><i class="ti ti-circle-check"></i> Sin tarjeta de crédito</span>
+      <span><i class="ti ti-circle-check"></i> Configuración en el día</span>
+      <span><i class="ti ti-circle-check"></i> Soporte en español</span>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────── STATS ─────────────────────── -->
+<div class="stats-bar">
+  <div class="container">
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-num">3<span>×</span></div>
+        <div class="stat-label">más búsquedas cerradas por mes en promedio</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">60<span>%</span></div>
+        <div class="stat-label">menos tiempo en tareas administrativas</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num"><span>&lt;</span>1d</div>
+        <div class="stat-label">para tener tu agencia operativa en Aptia</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">100<span>%</span></div>
+        <div class="stat-label">de la información en un solo lugar</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────── CÓMO FUNCIONA ─────────────────────── -->
+<section class="section" id="como-funciona">
+  <div class="container">
+    <div class="how-header">
+      <div class="badge"><i class="ti ti-route"></i> El proceso</div>
+      <h2>Un flujo claro, de principio a fin</h2>
+      <p class="lead" style="margin:16px auto 0;">Desde que abrís una búsqueda hasta que cerrás la posición, Aptia acompaña cada paso.</p>
+    </div>
+
+    <div class="steps">
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Cargás la búsqueda con todos sus requisitos</h3>
+          <p>
+            Creás una búsqueda para cada posición que trabaja tu agencia. Definís el cliente, el rol, el nivel de seniority,
+            la modalidad, la banda salarial y cualquier dato relevante. Todo queda registrado y disponible para tu equipo en tiempo real.
+            Cada búsqueda tiene su propio espacio de trabajo, sin mezclar con otras.
+          </p>
+          <div class="step-tags">
+            <span class="step-tag">Gestión de búsquedas</span>
+            <span class="step-tag">Ficha de posición</span>
+            <span class="step-tag">Acceso por equipo</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Los candidatos ingresan y se organizan solos</h3>
+          <p>
+            Tu cliente tiene una página web pública con las búsquedas activas. Los candidatos aplican directamente
+            y quedan cargados en el pipeline correspondiente. También podés cargarlo vos manualmente, o enviarlo
+            a "en banca" si no encaja ahora pero puede servir más adelante. No hay más CVs perdidos en el mail.
+          </p>
+          <div class="step-tags">
+            <span class="step-tag">Career page por cliente</span>
+            <span class="step-tag">Carga manual</span>
+            <span class="step-tag">En banca</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Avanzás a cada candidato en el pipeline visual</h3>
+          <p>
+            El pipeline es un tablero tipo Kanban donde ves a todos los candidatos de una búsqueda y en qué etapa están:
+            revisión inicial, primera entrevista, entrevista técnica, entrevista con el cliente, oferta, cerrado.
+            Con un clic movés al candidato a la siguiente etapa. El scoring con IA te ayuda a priorizar quiénes merecen más atención.
+          </p>
+          <div class="step-tags">
+            <span class="step-tag">Kanban visual</span>
+            <span class="step-tag">Scoring IA</span>
+            <span class="step-tag">Historial de cambios</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h3>Agendás y coordinás entrevistas sin salir de la plataforma</h3>
+          <p>
+            Sincronizás tu calendario y el de tu equipo para ver disponibilidades y agendar entrevistas directamente
+            desde el perfil del candidato. Se generan invitaciones automáticas y recordatorios. Sin mails de ida y vuelta,
+            sin planillas de disponibilidad.
+          </p>
+          <div class="step-tags">
+            <span class="step-tag">Calendario integrado</span>
+            <span class="step-tag">Invitaciones automáticas</span>
+            <span class="step-tag">Recordatorios</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <h3>Cerrás la posición y tu base de candidatos crece</h3>
+          <p>
+            Al cerrar una búsqueda, todos los candidatos que no fueron seleccionados quedan en tu base disponible
+            para futuras posiciones. Con el tiempo construís un pool de talento que te permite responder a
+            nuevas búsquedas mucho más rápido, sin arrancar de cero cada vez.
+          </p>
+          <div class="step-tags">
+            <span class="step-tag">Base de talento</span>
+            <span class="step-tag">Historial por candidato</span>
+            <span class="step-tag">Búsqueda y filtros</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────── FEATURES ─────────────────────── -->
+<section class="section section-alt" id="funcionalidades">
+  <div class="container">
+    <div class="features-header">
+      <div class="badge"><i class="ti ti-layout-grid"></i> Funcionalidades</div>
+      <h2>Todo lo que necesita tu agencia, nada que sobre</h2>
+      <p class="lead" style="margin:16px auto 0;">
+        Aptia reemplaza la combinación de planillas, carpetas compartidas y mails que usás hoy.
+      </p>
+    </div>
+
+    <div class="features-grid">
+
+      <!-- Wide card: multi-client -->
+      <div class="feature-card wide">
+        <div>
+          <div class="feature-icon"><i class="ti ti-building-skyscraper"></i></div>
+          <h3>Múltiples clientes, cero confusión</h3>
+          <p>
+            Cada cliente tiene su propio espacio dentro de tu agencia. Sus búsquedas, candidatos,
+            historial y página web son completamente independientes del resto. Podés tener 20 clientes
+            activos al mismo tiempo y cada recruiter ve solo lo que necesita.
+          </p>
+          <div class="wide-bullets">
+            <div class="wide-bullet"><i class="ti ti-check"></i> Cada cliente con su propio pipeline y equipo asignado</div>
+            <div class="wide-bullet"><i class="ti ti-check"></i> Permisos granulares: qué ve y qué puede hacer cada usuario</div>
+            <div class="wide-bullet"><i class="ti ti-check"></i> Logo y colores del cliente en su página de búsquedas</div>
+            <div class="wide-bullet"><i class="ti ti-check"></i> Historial de posiciones pasadas por cliente</div>
+          </div>
+        </div>
+        <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px;">
+          <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:16px;">Tus clientes activos</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;align-items:center;gap:12px;padding:12px;background:rgba(255,255,255,.04);border-radius:10px;border:1px solid rgba(255,255,255,.06);">
+              <div style="width:36px;height:36px;border-radius:8px;background:#10B981;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;">TC</div>
+              <div style="flex:1;">
+                <div style="font-size:13px;font-weight:600;color:#fff;">TechCorp Argentina</div>
+                <div style="font-size:11px;color:rgba(255,255,255,.35);">3 búsquedas activas · 48 candidatos</div>
+              </div>
+              <div style="font-size:11px;font-weight:600;color:#10B981;background:rgba(16,185,129,.12);padding:3px 8px;border-radius:6px;">Activo</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:12px;background:rgba(255,255,255,.04);border-radius:10px;border:1px solid rgba(255,255,255,.06);">
+              <div style="width:36px;height:36px;border-radius:8px;background:#6366F1;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;">FN</div>
+              <div style="flex:1;">
+                <div style="font-size:13px;font-weight:600;color:#fff;">Finova Payments</div>
+                <div style="font-size:11px;color:rgba(255,255,255,.35);">1 búsqueda activa · 23 candidatos</div>
+              </div>
+              <div style="font-size:11px;font-weight:600;color:#10B981;background:rgba(16,185,129,.12);padding:3px 8px;border-radius:6px;">Activo</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:12px;background:rgba(255,255,255,.04);border-radius:10px;border:1px solid rgba(255,255,255,.06);">
+              <div style="width:36px;height:36px;border-radius:8px;background:#F59E0B;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;">SR</div>
+              <div style="flex:1;">
+                <div style="font-size:13px;font-weight:600;color:#fff;">Salud Región Sur</div>
+                <div style="font-size:11px;color:rgba(255,255,255,.35);">2 búsquedas activas · 61 candidatos</div>
+              </div>
+              <div style="font-size:11px;font-weight:600;color:#10B981;background:rgba(16,185,129,.12);padding:3px 8px;border-radius:6px;">Activo</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature cards -->
+      <div class="feature-card">
+        <div class="feature-icon"><i class="ti ti-layout-kanban"></i></div>
+        <h3>Pipeline visual por búsqueda</h3>
+        <p>
+          Tablero Kanban para ver de un vistazo en qué etapa está cada candidato.
+          Arrastrás para mover, anotás observaciones, y el equipo siempre está en la misma página.
+          Sin planillas, sin mails internos de estado.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon"><i class="ti ti-world"></i></div>
+        <h3>Career page para cada cliente</h3>
+        <p>
+          Cada empresa que trabajás tiene una página pública con sus búsquedas activas,
+          bajo tu dominio o el suyo. Los candidatos aplican en segundos y quedan cargados directamente
+          al pipeline correcto, sin intervención manual.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon"><i class="ti ti-sparkles"></i></div>
+        <h3>Scoring con inteligencia artificial</h3>
+        <p>
+          La IA analiza el CV del candidato contra los requisitos de la búsqueda y le asigna
+          un puntaje de compatibilidad. Podés priorizar quiénes merecen más atención
+          en los primeros minutos, sin leer todo desde cero.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon"><i class="ti ti-calendar-event"></i></div>
+        <h3>Coordinación de entrevistas</h3>
+        <p>
+          Agendá entrevistas directamente desde el perfil del candidato. El sistema sincroniza
+          con tu calendario, envía las invitaciones y manda recordatorios automáticos.
+          Menos fricción, más entrevistas concretas.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon"><i class="ti ti-database"></i></div>
+        <h3>Base de talento propia</h3>
+        <p>
+          Todo candidato que alguna vez entró a tu sistema queda en tu base. Podés buscarlo
+          por rol, seniority, habilidades o fecha. Cuando entra una búsqueda nueva,
+          tu primer paso es revisar quién ya tenés guardado.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon"><i class="ti ti-users-group"></i></div>
+        <h3>Trabajo en equipo real</h3>
+        <p>
+          Invitá a todos los recruiters de tu agencia. Cada uno ve sus búsquedas asignadas,
+          puede agregar notas, mover candidatos y coordinar entrevistas. El trabajo queda
+          centralizado y el historial siempre disponible.
+        </p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────── WORKFLOW / CANDIDATOS ─────────────────────── -->
+<section class="section" id="candidatos">
+  <div class="container">
+    <div class="workflow-grid">
+      <div class="workflow-text">
+        <div class="badge"><i class="ti ti-user-check"></i> Candidatos</div>
+        <h2>Cada candidato, en el lugar correcto</h2>
+        <p>
+          Aptia elimina el caos de los CVs en el mail. Cada candidato tiene un perfil único
+          donde se acumula todo: CV, notas de entrevistas, evaluaciones, historial de búsquedas en las que participó.
+        </p>
+        <div class="workflow-items">
+          <div class="workflow-item">
+            <div class="workflow-item-icon"><i class="ti ti-file-cv"></i></div>
+            <div class="workflow-item-text">
+              <h4>Perfil centralizado</h4>
+              <p>CV, notas, evaluaciones y movimientos en el pipeline, todo en un solo lugar.</p>
+            </div>
+          </div>
+          <div class="workflow-item">
+            <div class="workflow-item-icon"><i class="ti ti-bookmark"></i></div>
+            <div class="workflow-item-text">
+              <h4>Sistema de "en banca"</h4>
+              <p>Si el candidato no encaja hoy, lo guardás para una próxima búsqueda con una nota de contexto.</p>
+            </div>
+          </div>
+          <div class="workflow-item">
+            <div class="workflow-item-icon"><i class="ti ti-search"></i></div>
+            <div class="workflow-item-text">
+              <h4>Búsqueda y filtros potentes</h4>
+              <p>Encontrá cualquier candidato de tu base en segundos por rol, habilidades o seniority.</p>
+            </div>
+          </div>
+          <div class="workflow-item">
+            <div class="workflow-item-icon"><i class="ti ti-history"></i></div>
+            <div class="workflow-item-text">
+              <h4>Historial completo</h4>
+              <p>Sabés en qué búsquedas estuvo, qué feedback dejó tu equipo y por qué no avanzó.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="workflow-visual">
+        <div class="pipeline-label">Pipeline — Dev Backend Sr · TechCorp</div>
+        <div class="pipeline-stages">
+          <span class="stage-chip muted">Recibidos</span>
+          <span class="stage-chip active">En revisión</span>
+          <span class="stage-chip muted">Entrevista</span>
+          <span class="stage-chip muted">Oferta</span>
+        </div>
+
+        <div class="cand-card">
+          <div class="cand-avatar" style="background:#10B981;color:#fff;">MS</div>
+          <div class="cand-info">
+            <div class="cand-name">Martín Soria</div>
+            <div class="cand-role">Go · 6 años exp · Buenos Aires</div>
+          </div>
+          <div class="cand-score">92</div>
+        </div>
+
+        <div class="cand-card">
+          <div class="cand-avatar" style="background:#6366F1;color:#fff;">LE</div>
+          <div class="cand-info">
+            <div class="cand-name">Laura Espinoza</div>
+            <div class="cand-role">Python · 4 años exp · Córdoba</div>
+          </div>
+          <div class="cand-score">84</div>
+        </div>
+
+        <div class="cand-card">
+          <div class="cand-avatar" style="background:#F59E0B;color:#fff;">RV</div>
+          <div class="cand-info">
+            <div class="cand-name">Rodrigo Vega</div>
+            <div class="cand-role">Node.js · 5 años exp · Remoto</div>
+          </div>
+          <div class="cand-score">79</div>
+        </div>
+
+        <div class="cand-actions">
+          <div class="cand-btn move"><i class="ti ti-arrow-right" style="margin-right:4px;"></i>Avanzar etapa</div>
+          <div class="cand-btn bank"><i class="ti ti-bookmark" style="margin-right:4px;"></i>En banca</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────── IMPLEMENTACION ─────────────────────── -->
+<section class="section section-dark">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:56px;">
+      <div class="tag">Implementación</div>
+      <h2 style="color:#fff;margin-bottom:16px;">Empezás a operar desde el primer día</h2>
+      <p class="lead lead-white" style="margin:0 auto;">
+        Nuestro equipo configura todo con vos. No es solo acceso a un software,
+        es un onboarding completo para que tu agencia funcione desde el día uno.
+      </p>
+    </div>
+    <div class="impl-grid">
+      <div class="impl-card">
+        <div class="impl-num">Día 1</div>
+        <h3>Setup de tu agencia</h3>
+        <p>Configuramos tu cuenta, cargamos tus clientes actuales y armamos la estructura de tu equipo.</p>
+        <div class="impl-list">
+          <div class="impl-item"><i class="ti ti-check"></i> Alta de organización y usuarios</div>
+          <div class="impl-item"><i class="ti ti-check"></i> Carga de clientes activos</div>
+          <div class="impl-item"><i class="ti ti-check"></i> Configuración de roles y permisos</div>
+          <div class="impl-item"><i class="ti ti-check"></i> Integración de calendarios</div>
+        </div>
+      </div>
+      <div class="impl-card">
+        <div class="impl-num">Semana 1</div>
+        <h3>Migración y búsquedas activas</h3>
+        <p>Cargamos tus búsquedas activas, importamos candidatos existentes y publicamos las career pages.</p>
+        <div class="impl-list">
+          <div class="impl-item"><i class="ti ti-check"></i> Carga de búsquedas en curso</div>
+          <div class="impl-item"><i class="ti ti-check"></i> Importación de candidatos históricos</div>
+          <div class="impl-item"><i class="ti ti-check"></i> Publicación de career pages</div>
+          <div class="impl-item"><i class="ti ti-check"></i> Capacitación del equipo recruiter</div>
+        </div>
+      </div>
+      <div class="impl-card">
+        <div class="impl-num">Ongoing</div>
+        <h3>Soporte continuo</h3>
+        <p>No te dejamos solo. Tenés soporte en español, actualizaciones constantes y acompañamiento en el crecimiento.</p>
+        <div class="impl-list">
+          <div class="impl-item"><i class="ti ti-check"></i> Soporte por WhatsApp y email</div>
+          <div class="impl-item"><i class="ti ti-check"></i> Actualizaciones automáticas</div>
+          <div class="impl-item"><i class="ti ti-check"></i> Nuevas funcionalidades sin costo extra</div>
+          <div class="impl-item"><i class="ti ti-check"></i> Revisiones de configuración periódicas</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────── PRECIOS ─────────────────────── -->
+<section class="section section-alt" id="precios">
+  <div class="container">
+    <div class="pricing-header">
+      <div class="badge"><i class="ti ti-receipt"></i> Planes</div>
+      <h2>Precios claros, sin sorpresas</h2>
+      <p>Elegí el plan que se adapta al tamaño y ritmo de tu agencia. Todos incluyen implementación asistida.</p>
+    </div>
+    <div class="pricing-grid">
+
+      <!-- Starter -->
+      <div class="plan-card">
+        <div class="plan-name">Starter</div>
+        <div class="plan-price">
+          <span class="currency">USD</span><span class="amount">1.000</span><span class="period">/mes</span>
+        </div>
+        <p class="plan-desc">Para agencias que están ordenando sus procesos y quieren empezar a escalar con herramientas profesionales.</p>
+        <div class="plan-divider"></div>
+        <div class="plan-features">
+          <div class="plan-feature"><i class="ti ti-check"></i> Hasta 5 clientes activos</div>
+          <div class="plan-feature"><i class="ti ti-check"></i> Hasta 20 búsquedas por mes</div>
+          <div class="plan-feature"><i class="ti ti-check"></i> Hasta 3 usuarios (recruiters)</div>
+          <div class="plan-feature"><i class="ti ti-check"></i> Career page por cliente</div>
+          <div class="plan-feature"><i class="ti ti-check"></i> Pipeline Kanban completo</div>
+          <div class="plan-feature"><i class="ti ti-check"></i> Base de candidatos ilimitada</div>
+          <div class="plan-feature"><i class="ti ti-check"></i> Scoring IA incluido</div>
+          <div class="plan-feature"><i class="ti ti-check"></i> Soporte por email y WhatsApp</div>
+        </div>
+        <a href="#contacto" class="btn btn-outline plan-btn">Solicitar acceso</a>
+      </div>
+
+      <!-- Agency (featured) -->
+      <div class="plan-card featured">
+        <div class="featured-badge">Más popular</div>
+        <div class="plan-name">Agency</div>
+        <div class="plan-price">
+          <span class="currency" style="color:rgba(255,255,255,.5)">USD</span>
+          <span class="amount">2.500</span>
+          <span class="period">/mes</span>
+        </div>
+        <p class="plan-desc">Para agencias en crecimiento que manejan varios clientes simultáneos y necesitan un equipo más grande.</p>
+        <div class="plan-divider"></div>
+        <div class="plan-features">
+          <div class="plan-feature"><i class="ti ti-check"></i> Hasta 20 clientes activos</div>
+          <div class="plan-feature"><i class="ti ti-check"></i> Búsquedas ilimitadas</div>
+          <div class="plan-feature"><i class="ti ti-check"></i> Hasta 10 usuarios</div>
+          <div class="plan-feature"><i class="ti ti-check"></i> Todo lo de Starter</div>
+          <div class="plan-feature"><i class="ti ti-check"></i> Coordinación de entrevistas</div>
+          <div class="plan-feature"><i class="ti ti-check"></i> Reportes y métricas por cliente</div>
+          <div class="plan-feature"><i class="ti ti-check"></i> Integraciones de calendario</div>
+          <div class="plan-feature"><i class="ti ti-check"></i> Soporte prioritario</div>
+        </div>
+        <a href="#contacto" class="btn btn-white plan-btn">Solicitar acceso</a>
+      </div>
+
+      <!-- Enterprise -->
+      <div class="plan-card">
+        <div class="plan-name">Enterprise</div>
+        <div class="plan-price">
+          <span class="currency">USD</span><span class="amount" style="font-size:36px;line-height:1.2;">A medida</span>
+        </div>
+        <p class="plan-desc">Para grandes agencias que necesitan configuración personalizada, white label y acuerdos de nivel de servicio.</p>
+        <div class="plan-divider"></div>
+        <div class="plan-features">
+          <div class="plan-feature"><i class="ti ti-check"></i> Clientes y usuarios ilimitados</div>
+          <div class="plan-feature"><i class="ti ti-check"></i> Búsquedas ilimitadas</div>
+          <div class="plan-feature"><i class="ti ti-check"></i> Todo lo de Agency</div>
+          <div class="plan-feature"><i class="ti ti-check"></i> White label (tu logo y colores)</div>
+          <div class="plan-feature"><i class="ti ti-check"></i> Dominio propio por cliente</div>
+          <div class="plan-feature"><i class="ti ti-check"></i> SLA garantizado</div>
+          <div class="plan-feature"><i class="ti ti-check"></i> Account manager dedicado</div>
+          <div class="plan-feature"><i class="ti ti-check"></i> Integraciones custom</div>
+        </div>
+        <a href="#contacto" class="btn btn-outline plan-btn">Hablar con ventas</a>
+      </div>
+
+    </div>
+    <p style="text-align:center;font-size:14px;color:var(--gris);margin-top:32px;">
+      Todos los planes incluyen implementación asistida + 7 días de prueba gratuita.
+      El costo de implementación se cotiza por separado según el tamaño de la agencia.
+    </p>
+  </div>
+</section>
+
+<!-- ─────────────────────── DEMO / CONTACTO ─────────────────────── -->
+<section class="section" id="contacto">
+  <div class="container">
+    <div class="demo-box">
+      <div class="tag">Empezá hoy</div>
+      <h2>Tu agencia puede funcionar mejor.<br />Veámoslo juntos.</h2>
+      <p>
+        Escribinos y te mostramos cómo Aptia funciona con el tipo de búsquedas que trabaja tu agencia.
+        Sin presentación genérica, directo al punto.
+      </p>
+      <div class="demo-form">
+        <input type="email" class="demo-input" placeholder="tu@agencia.com" />
+        <button class="btn btn-white" style="white-space:nowrap;flex-shrink:0;">
+          Solicitar demo <i class="ti ti-arrow-right"></i>
+        </button>
+      </div>
+      <div class="demo-note">
+        <span><i class="ti ti-clock" style="color:var(--verde);"></i> Respondemos en menos de 24hs</span>
+        <span><i class="ti ti-message-circle" style="color:var(--verde);"></i> Soporte en español</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────── FOOTER ─────────────────────── -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <div class="logo footer-logo">
+          <svg width="28" height="28" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="40" cy="26" r="16" fill="none" stroke="#10B981" stroke-width="4.5"/>
+            <path d="M12,72 Q12,54 40,54 Q68,54 68,72" fill="none" stroke="#059669" stroke-width="4.5" stroke-linecap="round"/>
+          </svg>
+          aptia
+        </div>
+        <p class="footer-tagline">
+          Software de recruiting para agencias de LATAM que quieren crecer sin perder el control.
+        </p>
+      </div>
+      <div class="footer-cols">
+        <div class="footer-col">
+          <h4>Producto</h4>
+          <ul>
+            <li><a href="#como-funciona">Cómo funciona</a></li>
+            <li><a href="#funcionalidades">Funcionalidades</a></li>
+            <li><a href="#precios">Precios</a></li>
+            <li><a href="#">Changelog</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Empresa</h4>
+          <ul>
+            <li><a href="#">Nosotros</a></li>
+            <li><a href="#contacto">Contacto</a></li>
+            <li><a href="#">Blog</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Legal</h4>
+          <ul>
+            <li><a href="#">Privacidad</a></li>
+            <li><a href="#">Términos de uso</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span class="footer-copy">© 2025 Aptia. Todos los derechos reservados.</span>
+      <div class="footer-legal">
+        <a href="#">Privacidad</a>
+        <a href="#">Términos</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

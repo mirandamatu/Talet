@@ -1,0 +1,32 @@
+# Environment and secrets
+.env
+backend/.env
+*.pem
+
+# Python
+backend/.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Uploads and local data
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs and temp
+*.log
+__write_test.txt
+_persistence_test.txt
+_sync_test.txt
