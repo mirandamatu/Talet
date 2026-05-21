@@ -2,6 +2,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.routes import admin, ai, auth, careers, client, client_profile, commercial, health, hub, integrations, product, recruiting, scheduler, talent
@@ -10,6 +11,11 @@ from app.db.session import SessionLocal
 from app.services.scheduler import run_scheduled_maintenance
 
 app = FastAPI(title='Atipia API')
+
+
+@app.get('/', include_in_schema=False)
+def root():
+    return RedirectResponse(url='/docs')
 
 
 @app.on_event('startup')
