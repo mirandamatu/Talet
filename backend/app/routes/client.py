@@ -338,7 +338,12 @@ def list_en_banca_candidates(user=Depends(get_current_user), db: Session = Depen
 
 
 @router.get('/candidates', response_model=list[CandidateOut], dependencies=[Depends(require_roles('COMERCIAL', 'TALENT', 'SUPERADMIN'))])
-def list_all_candidates(user=Depends(get_current_user), db: Session = Depends(get_db)):
+def list_all_candidates(
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     if user.organization_id is None:
         return []
     client_ids = {c.id for c in get_accessible_clients(user, db)}
@@ -347,7 +352,7 @@ def list_all_candidates(user=Depends(get_current_user), db: Session = Depends(ge
     q = db.query(Candidate).filter(Candidate.archived_at.is_(None))
     if user.role != 'SUPERADMIN':
         q = q.filter(Candidate.client_id.in_(client_ids))
-    candidates = q.order_by(Candidate.id.desc()).all()
+    candidates = q.order_by(Candidate.id.desc()).offset(offset).limit(limit).all()
     return [_serialize_candidate(candidate, db, include_internal=True, viewer_role=user.role) for candidate in candidates]
 
 

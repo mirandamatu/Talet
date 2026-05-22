@@ -11,7 +11,7 @@ class Candidate(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     client_id: Mapped[int | None] = mapped_column(ForeignKey('clients.id'), nullable=True, index=True)
-    search_id: Mapped[int | None] = mapped_column(ForeignKey('searches.id'), nullable=True)
+    search_id: Mapped[int | None] = mapped_column(ForeignKey('searches.id'), nullable=True, index=True)
     full_name: Mapped[str] = mapped_column(String(200))
     email: Mapped[str | None] = mapped_column(String(200), nullable=True)
     short_profile: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -21,7 +21,7 @@ class Candidate(Base):
     status: Mapped[str] = mapped_column(String(50), default='en_revision')
     source: Mapped[str | None] = mapped_column(String(30), nullable=True)
     internal_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     client = relationship('Client', foreign_keys=[client_id])

@@ -16,3 +16,5 @@ google-api-python-client==2.196.0
 google-auth==2.52.0
 google-auth-oauthlib==1.4.0
 mammoth==1.12.0
+pytest==8.3.4
+httpx==0.27.2

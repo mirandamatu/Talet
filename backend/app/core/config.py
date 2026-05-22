@@ -7,8 +7,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')
 
     database_url: str = 'postgresql+psycopg2://postgres:postgres@localhost:5432/acid_talent'
-    jwt_secret: str = 'change-me'
+    jwt_secret: str = ''
     access_token_expire_minutes: int = 480
+    allowed_origins: str = 'http://localhost:5173'
 
     s3_endpoint_url: str | None = None
     s3_region: str = 'us-east-1'
@@ -31,6 +32,10 @@ class Settings(BaseSettings):
     google_oauth_client_id: str | None = None
     google_oauth_client_secret: str | None = None
     google_oauth_redirect_uri: str | None = None
+
+    @property
+    def allowed_origins_list(self) -> list[str]:
+        return [origin.strip() for origin in self.allowed_origins.split(',') if origin.strip()]
 
 
 @lru_cache

@@ -24,6 +24,8 @@ import { generateMailDraft, sendMailDraft } from "./features/recruiting/mail"
 import { createCandidateNote, deleteCandidateNote, listCandidateNotes, updateCandidateNote } from "./features/recruiting/notes"
 import { createInterviewProposal, disconnectGoogleCalendar, getGoogleCalendarStatus } from "./features/recruiting/calendar"
 import { connectGoogleWithPopup } from "./features/recruiting/googleConnect"
+import { Login } from "./features/auth/Login.jsx"
+import { Notifications } from "./features/notifications/Notifications.jsx"
 import BrandMark from "./BrandMark.jsx"
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString()
@@ -90,6 +92,29 @@ const STATUS_LABELS = {
   banco_no_activo: "Banco no activo",
   en_banca: "En banca",
   applied: "Postulado"
+}
+
+class ErrorBoundary extends React.Component {
+  state = { error: null }
+
+  static getDerivedStateFromError(error) {
+    return { error }
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="error-boundary">
+          <h2>Ocurrió un error inesperado.</h2>
+          <p>Recargá la página para volver a intentar.</p>
+          <button type="button" className="primary-action fit" onClick={() => window.location.reload()}>
+            Recargar
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
 }
 
 function normalizeUser(user) {
@@ -163,6 +188,7 @@ function App() {
   const speechRef = useRef(null)
   const [planLimitPayload, setPlanLimitPayload] = useState(null)
   const [googleConnecting, setGoogleConnecting] = useState(false)
+  const [interviewAnalysis, setInterviewAnalysis] = useState(null)
   const toast = useToast()
 
   const role = user?.role
@@ -258,7 +284,8 @@ function App() {
 
   async function loadAllCandidates(searchRows = searches) {
     if (role !== "CLIENTE") {
-      const rows = await apiFetch("/candidates", {}, token).catch(() => null)
+      // TODO: reemplazar este límite provisorio por paginación real en la UI.
+      const rows = await apiFetch("/candidates?limit=200", {}, token).catch(() => null)
       if (rows) {
         setGlobalCandidates(rows || [])
       }
@@ -512,7 +539,11 @@ function App() {
       setError("Para análisis IA la entrevista debe estar registrada en backend.")
       return
     }
-    const transcript = transcriptOverride || window.prompt("Pegá la transcripción de la entrevista:")
+    if (!transcriptOverride) {
+      setInterviewAnalysis({ interview, roleContext, transcript: "", result: null })
+      return
+    }
+    const transcript = transcriptOverride
     if (!transcript || transcript.trim().length < 40) {
       setError("La transcripción es muy corta para generar una devolución útil.")
       return
@@ -524,16 +555,8 @@ function App() {
         method: "POST",
         body: JSON.stringify({ transcript: transcript.trim(), role_context: roleContext })
       }, token)
-      alert([
-        "IA - Devolución de entrevista",
-        "",
-        `Fit: ${Math.round(Number(result.fit_score || 0))}%`,
-        `Decisión: ${result.recommendation ? "Recomendado" : "No recomendado"}`,
-        "",
-        result.summary || "",
-        "",
-        `Feedback para Talent: ${result.talent_feedback || "Sin comentario adicional."}`
-      ].join("\n"))
+      setInterviewAnalysis({ interview, roleContext, transcript: transcript.trim(), result })
+      toast.success("Análisis generado", "La devolución IA quedó disponible en el panel.")
       const rows = await apiFetch("/notifications", {}, token).catch(() => [])
       setNotifications(rows || [])
     } catch (err) {
@@ -676,16 +699,16 @@ function App() {
         />
         {error && <Feedback variant="error" title="Ocurrió un error">{error}</Feedback>}
         {active === "overview" && (
-          <Overview role={role} stats={stats} metricsSummary={metricsSummary} searches={searches} candidates={allCandidates} clients={clients} setActive={setActive} />
+          <Overview role={role} stats={stats} metricsSummary={metricsSummary} searches={searches} candidates={allCandidates} clients={clients} loading={loading} setActive={setActive} />
         )}
         {active === "metrics" && (
-          <Metrics role={role} stats={stats} metricsSummary={metricsSummary} searches={searches} candidates={allCandidates} clients={clients} />
+          <Metrics role={role} stats={stats} metricsSummary={metricsSummary} searches={searches} candidates={allCandidates} clients={clients} loading={loading} />
         )}
         {active === "searches" && !selectedSearch && (
-          <SearchesView searches={openSearches} clients={clients} role={role} token={token} mode="searches" onOpen={openSearch} onRefresh={refreshAll} />
+          <SearchesView searches={openSearches} clients={clients} role={role} token={token} mode="searches" loading={loading} onOpen={openSearch} onRefresh={refreshAll} />
         )}
         {active === "projects" && !selectedSearch && (
-          <SearchesView searches={projectSearches} clients={clients} role={role} token={token} mode="projects" onOpen={openSearch} onRefresh={refreshAll} />
+          <SearchesView searches={projectSearches} clients={clients} role={role} token={token} mode="projects" loading={loading} onOpen={openSearch} onRefresh={refreshAll} />
         )}
         {(active === "searches" || active === "projects") && selectedSearch && !selectedCandidate && (
           <SearchDetail
@@ -716,6 +739,7 @@ function App() {
             clients={clients}
             token={token}
             role={role}
+            loading={loading}
             onOpen={openCandidate}
             onChanged={() => loadAllCandidates(searches)}
           />
@@ -802,6 +826,15 @@ function App() {
           onSend={sendCurrentMail}
         />
       )}
+      {interviewAnalysis && (
+        <InterviewAnalysisModal
+          value={interviewAnalysis}
+          busy={busyAction === "interview-ai"}
+          onChange={setInterviewAnalysis}
+          onClose={() => setInterviewAnalysis(null)}
+          onAnalyze={(transcript) => analyzeInterview(interviewAnalysis.interview, interviewAnalysis.roleContext, transcript)}
+        />
+      )}
       {planLimitPayload && (
         <div className="modal-backdrop" role="presentation" onClick={() => setPlanLimitPayload(null)}>
           <div className="modal-card panel" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
@@ -826,95 +859,11 @@ function App() {
   )
 }
 
-function Login({ onLogin }) {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [emailError, setEmailError] = useState("")
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
-
-  function validateEmail(value) {
-    if (!value.trim()) return "Ingresá tu email."
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "Formato de email inválido."
-    return ""
-  }
-
-  async function submit(event) {
-    event.preventDefault()
-    const ee = validateEmail(email)
-    setEmailError(ee)
-    if (ee) return
-    setError("")
-    setLoading(true)
-    try {
-      const data = await apiFetch("/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ email, password })
-      })
-      onLogin(data.access_token, data.user)
-    } catch (err) {
-      const msg = err.message === "ACCOUNT_INACTIVE"
-        ? "Cuenta desactivada. Contactá al administrador."
-        : err.message || "No se pudo iniciar sesión."
-      setError(msg)
-    } finally {
-      setLoading(false)
-    }
-  }
-
+function AppWithErrorBoundary() {
   return (
-    <div className="login-screen">
-      <section className="login-panel">
-        <BrandMark />
-        <p className="eyebrow">Atipia OS</p>
-        <h1>Recruiting inteligente para equipos modernos.</h1>
-        <p className="login-copy">
-          Seguimiento de búsquedas, candidatos, IA de fit y feedback en una interfaz nueva.
-        </p>
-      </section>
-      <form className="login-card" onSubmit={submit} noValidate>
-        <h2>Ingresar</h2>
-        <Field
-          label="Email"
-          required
-          error={emailError}
-          helper="Usá el mismo email que te envió Atipia."
-        >
-          <input
-            type="email"
-            value={email}
-            onChange={(event) => {
-              setEmail(event.target.value)
-              if (emailError) setEmailError("")
-            }}
-            onBlur={(event) => setEmailError(validateEmail(event.target.value))}
-            autoComplete="email"
-            inputMode="email"
-            placeholder="tu@email.com"
-            autoFocus
-            required
-          />
-        </Field>
-        <Field label="Contraseña" required>
-          <PasswordInput
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder="Tu contraseña"
-            autoComplete="current-password"
-            required
-          />
-        </Field>
-        {error && <Feedback variant="error" title="No se pudo iniciar sesión">{error}</Feedback>}
-        <button
-          className="primary-action"
-          type="submit"
-          disabled={loading}
-          data-busy={loading || undefined}
-        >
-          {loading ? "Ingresando..." : (<>Entrar al portal <Icon name="arrowRight" size={16} /></>)}
-        </button>
-      </form>
-    </div>
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   )
 }
 
@@ -1047,7 +996,7 @@ function Topbar({ active, role, loading, query, setQuery, clients, clientFilter,
   )
 }
 
-function Overview({ role, stats, metricsSummary, searches, candidates, clients, setActive }) {
+function Overview({ role, stats, metricsSummary, searches, candidates, clients, loading, setActive }) {
   const recent = candidates.slice(0, 5)
   return (
     <div className="view-stack">
@@ -1062,7 +1011,7 @@ function Overview({ role, stats, metricsSummary, searches, candidates, clients, 
           <Icon name="arrowRight" size={14} />
         </button>
       </section>
-      <KpiGrid stats={stats} metricsSummary={metricsSummary} />
+      <KpiGrid stats={stats} metricsSummary={metricsSummary} loading={loading} />
       {metricsSummary?.sections?.length > 0 && (
         <section className="content-grid two">
           {metricsSummary.sections.map((section) => (
@@ -1115,8 +1064,20 @@ function Overview({ role, stats, metricsSummary, searches, candidates, clients, 
   )
 }
 
-function KpiGrid({ stats, metricsSummary }) {
+function KpiGrid({ stats, metricsSummary, loading = false }) {
   const searchSummary = metricsSummary?.searches
+  if (loading) {
+    return (
+      <section className="kpi-grid" aria-busy="true">
+        {Array.from({ length: 5 }).map((_, idx) => (
+          <article className="kpi-card" key={idx}>
+            <Skeleton width="60%" />
+            <Skeleton width={64} height={28} />
+          </article>
+        ))}
+      </section>
+    )
+  }
   return (
     <section className="kpi-grid">
       <Kpi label="Búsquedas abiertas" value={searchSummary?.abiertas ?? stats.searches} tone="blue" />
@@ -1137,7 +1098,7 @@ function Kpi({ label, value, tone }) {
   )
 }
 
-function Metrics({ role, stats, metricsSummary, searches, candidates, clients }) {
+function Metrics({ role, stats, metricsSummary, searches, candidates, clients, loading = false }) {
   const statusSegments = [
     { key: "en_revision", label: "En revisión", value: stats.byStatus.en_revision, color: "#f8c14a" },
     { key: "entrevistado", label: "Entrevistado", value: stats.byStatus.entrevistado, color: "#34d399" },
@@ -1158,7 +1119,7 @@ function Metrics({ role, stats, metricsSummary, searches, candidates, clients })
 
   return (
     <div className="view-stack">
-      <KpiGrid stats={stats} metricsSummary={metricsSummary} />
+      <KpiGrid stats={stats} metricsSummary={metricsSummary} loading={loading} />
       <section className="content-grid two">
         <Panel title={role === "COMERCIAL" ? "Embudo de búsquedas" : "Estado de candidatos"}>
           <DonutChart segments={statusSegments} centerValue={stats.candidates} centerLabel="Candidatos" />
@@ -1192,7 +1153,7 @@ function Metrics({ role, stats, metricsSummary, searches, candidates, clients })
   )
 }
 
-function SearchesView({ searches, clients, role, token, mode = "searches", onOpen, onRefresh }) {
+function SearchesView({ searches, clients, role, token, mode = "searches", loading = false, onOpen, onRefresh }) {
   const grouped = {
     abierta: searches.filter((search) => (search.search_state || "abierta") === "abierta"),
     activa: searches.filter((search) => search.search_state === "activa"),
@@ -1217,6 +1178,9 @@ function SearchesView({ searches, clients, role, token, mode = "searches", onOpe
         ]
       ).map((group) => (
         <Panel key={group.key} title={`${group.title} (${grouped[group.key].length})`}>
+          {loading ? (
+            <SkeletonList rows={3} />
+          ) : (
           <section className="card-grid">
             {grouped[group.key].map((search) => (
               <article key={search.id} className="search-card">
@@ -1252,6 +1216,7 @@ function SearchesView({ searches, clients, role, token, mode = "searches", onOpe
               <EmptyState icon="search" title={`Sin ${group.title.toLowerCase()}`} description="Cuando muevas búsquedas a este estado las vas a ver acá." />
             )}
           </section>
+          )}
         </Panel>
       ))}
     </div>
@@ -1265,6 +1230,8 @@ function SearchDetail({ search, role, token, candidates, allCandidates = [], ana
   const [jdEditing, setJdEditing] = useState(false)
   const [draft, setDraft] = useState({ title: search.title, job_description: stripHtml(search.job_description), contact_name: search.contact_name || "", contact_email: search.contact_email || "", manual_state: search.manual_state || search.search_state || "abierta" })
   const [meetingFile, setMeetingFile] = useState(null)
+  const [meetingFileError, setMeetingFileError] = useState("")
+  const [metaErrors, setMetaErrors] = useState({})
   const [message, setMessage] = useState("")
   const [selectedAnalysisIds, setSelectedAnalysisIds] = useState([])
 
@@ -1278,9 +1245,21 @@ function SearchDetail({ search, role, token, candidates, allCandidates = [], ana
     })
     setMetaEditing(false)
     setJdEditing(false)
+    setMetaErrors({})
   }, [search.id])
 
+  function validateMeta(nextDraft = draft) {
+    const errors = {}
+    if (!nextDraft.title.trim()) errors.title = "El título es obligatorio."
+    if (nextDraft.contact_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextDraft.contact_email)) {
+      errors.contact_email = "Formato de email inválido."
+    }
+    setMetaErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
   async function saveMeta() {
+    if (!validateMeta()) return
     try {
       const updated = await apiFetch(`/searches/${search.id}`, {
         method: "PATCH",
@@ -1333,6 +1312,7 @@ function SearchDetail({ search, role, token, candidates, allCandidates = [], ana
 
   async function uploadMeeting() {
     if (!meetingFile) return
+    if (meetingFileError) return
     const form = new FormData()
     form.append("file", meetingFile)
     try {
@@ -1342,6 +1322,27 @@ function SearchDetail({ search, role, token, candidates, allCandidates = [], ana
     } catch (err) {
       toast.error("No se pudo subir la reunión", err.message || "Error.")
     }
+  }
+
+  function handleMeetingFile(file) {
+    setMeetingFileError("")
+    if (!file) {
+      setMeetingFile(null)
+      return
+    }
+    const allowedExtensions = /\.(pdf|docx)$/i
+    const isAllowed = file.type.startsWith("audio/") || file.type.startsWith("video/") || allowedExtensions.test(file.name)
+    if (!isAllowed) {
+      setMeetingFile(null)
+      setMeetingFileError("Usá audio, video, PDF o DOCX.")
+      return
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      setMeetingFile(null)
+      setMeetingFileError("El archivo no puede superar 50 MB.")
+      return
+    }
+    setMeetingFile(file)
   }
 
   return (
@@ -1364,15 +1365,41 @@ function SearchDetail({ search, role, token, candidates, allCandidates = [], ana
                 </>
               ) : (
                 <div className="form-grid">
-                  <input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} placeholder="Título" />
-                  <input value={draft.contact_name} onChange={(event) => setDraft({ ...draft, contact_name: event.target.value })} placeholder="Contacto" />
-                  <input value={draft.contact_email} onChange={(event) => setDraft({ ...draft, contact_email: event.target.value })} placeholder="Email contacto" />
-                  <select value={draft.manual_state} onChange={(event) => setDraft({ ...draft, manual_state: event.target.value })}>
-                    <option value="abierta">Abierta</option>
-                    <option value="activa">Activa</option>
-                    <option value="desactivada">Desactivada</option>
-                    <option value="eliminada">Eliminada</option>
-                  </select>
+                  <Field label="Título" required error={metaErrors.title}>
+                    <input
+                      value={draft.title}
+                      onChange={(event) => {
+                        const next = { ...draft, title: event.target.value }
+                        setDraft(next)
+                        if (metaErrors.title) validateMeta(next)
+                      }}
+                      onBlur={() => validateMeta()}
+                      placeholder="Título"
+                    />
+                  </Field>
+                  <Field label="Contacto">
+                    <input value={draft.contact_name} onChange={(event) => setDraft({ ...draft, contact_name: event.target.value })} placeholder="Contacto" />
+                  </Field>
+                  <Field label="Email contacto" error={metaErrors.contact_email}>
+                    <input
+                      value={draft.contact_email}
+                      onChange={(event) => {
+                        const next = { ...draft, contact_email: event.target.value }
+                        setDraft(next)
+                        if (metaErrors.contact_email) validateMeta(next)
+                      }}
+                      onBlur={() => validateMeta()}
+                      placeholder="Email contacto"
+                    />
+                  </Field>
+                  <Field label="Estado">
+                    <select value={draft.manual_state} onChange={(event) => setDraft({ ...draft, manual_state: event.target.value })}>
+                      <option value="abierta">Abierta</option>
+                      <option value="activa">Activa</option>
+                      <option value="desactivada">Desactivada</option>
+                      <option value="eliminada">Eliminada</option>
+                    </select>
+                  </Field>
                 </div>
               )}
             </div>
@@ -1417,7 +1444,15 @@ function SearchDetail({ search, role, token, candidates, allCandidates = [], ana
             )}
             {role === "COMERCIAL" && (
               <>
-                <input type="file" accept="audio/*,video/*,.pdf,.docx" style={{ maxWidth: 200 }} onChange={(event) => setMeetingFile(event.target.files?.[0] || null)} />
+                <Field label="Reunión cliente" error={meetingFileError}>
+                  <FileInput
+                    value={meetingFile}
+                    onChange={handleMeetingFile}
+                    accept="audio/*,video/*,.pdf,.docx"
+                    label="Elegir reunión"
+                    hint="Audio, video, PDF o DOCX. Máx. 50 MB."
+                  />
+                </Field>
                 <button type="button" className="ghost-action fit" onClick={uploadMeeting} disabled={!meetingFile}>Subir reunión cliente</button>
               </>
             )}
@@ -1517,7 +1552,7 @@ function SearchDetail({ search, role, token, candidates, allCandidates = [], ana
             )}
           </div>
           {!jdEditing ? (
-            <div className="jd-html" dangerouslySetInnerHTML={{ __html: normalizeDescriptionToHtml(search.job_description) }} />
+            <div className="jd-html" dangerouslySetInnerHTML={{ __html: safeDescriptionHtml(search.job_description) }} />
           ) : (
             <textarea className="jd-html jd-textarea" rows={26} value={draft.job_description} onChange={(event) => setDraft({ ...draft, job_description: event.target.value })} aria-label="Editar Job Description" />
           )}
@@ -1579,13 +1614,16 @@ function AssignExistingCandidates({ search, candidates, assignedCandidates, toke
   )
 }
 
-function CandidatesView({ candidates, searches, clients, token, role, onOpen, onChanged }) {
+function CandidatesView({ candidates, searches, clients, token, role, loading = false, onOpen, onChanged }) {
   return (
     <div className="view-stack">
       {(role === "TALENT" || role === "SUPERADMIN") && (
         <UploadCandidate clients={clients} searches={searches} token={token} onUploaded={onChanged} />
       )}
       <Panel title="Base de candidatos" subtitle="Creá candidatos una vez y asignales una o varias búsquedas.">
+        {loading ? (
+          <SkeletonList rows={5} />
+        ) : (
         <section className="entity-list">
           {candidates.map((candidate) => {
             const search = searches.find((item) => Number(item.id) === Number(candidate.search_id))
@@ -1602,6 +1640,7 @@ function CandidatesView({ candidates, searches, clients, token, role, onOpen, on
           })}
           {candidates.length === 0 && <Empty text="No hay candidatos para los filtros actuales." />}
         </section>
+        )}
       </Panel>
     </div>
   )
@@ -1679,7 +1718,7 @@ function CandidateRow({ candidate, token, role, onOpen, onChanged }) {
         )}
         {canManage && (
           <div className="row-menu-wrap">
-            <button type="button" className="icon-action mini" onClick={() => setMenuOpen((value) => !value)} title="Más acciones">⋯</button>
+            <button type="button" className="icon-action mini" onClick={() => setMenuOpen((value) => !value)} aria-label="Más acciones del candidato" title="Más acciones">⋯</button>
             {menuOpen && (
               <div className="row-menu">
                 {candidate.search_id !== null && candidate.search_id !== undefined && (
@@ -1740,7 +1779,7 @@ function CandidateDetail({ candidate, role, token, busyAction, setBusyAction, st
       : { status: effectiveStatus, feedback: { comment: feedback.comment || "", ratings_json: {} } }
     try {
       await apiFetch(`/candidates/${candidate.id}/status${candidate.search_id ? `?search_id=${candidate.search_id}` : ""}`, { method: "PATCH", body: JSON.stringify(body) }, token)
-      alert("Estado actualizado.")
+      toast.success("Estado actualizado")
       if (effectiveStatus === "rechazado") {
         onComposeMail({
           kind: "discard",
@@ -1759,7 +1798,7 @@ function CandidateDetail({ candidate, role, token, busyAction, setBusyAction, st
     try {
       const result = await apiFetch(`/candidates/${candidate.id}/present${candidate.search_id ? `?search_id=${candidate.search_id}` : ""}`, { method: "POST", body: JSON.stringify({}) }, token)
       onCandidatePatch?.({ is_presented_to_client: true, presented_at: result.presented_at })
-      alert("Candidato presentado al cliente.")
+      toast.success("Candidato presentado", candidate.full_name)
     } finally {
       setBusyAction("")
     }
@@ -2485,7 +2524,7 @@ function CreateSearch({ token, clients, role, onCreated }) {
             <Feedback variant="info">{result.ai_questions_summary || "La búsqueda fue creada."}</Feedback>
             <div className="question-card">
               <strong>Job Description generado</strong>
-              <p dangerouslySetInnerHTML={{ __html: normalizeDescriptionToHtml(result.job_description) }} />
+              <p dangerouslySetInnerHTML={{ __html: safeDescriptionHtml(result.job_description) }} />
             </div>
             {(result.ai_question_items || []).filter((item) => item.status === "pending").map((question) => (
               <div className="question-card" key={question.id}>
@@ -2516,58 +2555,6 @@ function CreateSearch({ token, clients, role, onCreated }) {
         )}
       </Panel>
     </section>
-  )
-}
-
-function Notifications({ items, onReadAll, onMarkRead, onArchive }) {
-  const unread = items.filter((item) => item.status === "unread").length
-  return (
-    <div className="view-stack">
-      <div className="pill-row" style={{ justifyContent: "space-between" }}>
-        <span className="badge">
-          <Icon name="bell" size={12} />
-          {unread > 0 ? `${unread} sin leer` : "Todo al día"}
-        </span>
-        {unread > 0 && (
-          <button type="button" className="ghost-action" onClick={onReadAll}>
-            <Icon name="check" size={14} />
-            Marcar todas como leídas
-          </button>
-        )}
-      </div>
-      {items.length === 0 ? (
-        <EmptyState
-          icon="bell"
-          title="Sin notificaciones pendientes"
-          description="Cuando un candidato avance o se programe una entrevista vas a verlo acá."
-        />
-      ) : (
-        <section className="entity-list">
-          {items.map((item) => (
-            <article key={item.id} className="entity-row">
-              <div>
-                <strong>{item.title || "Notificación"}</strong>
-                <span>{item.message || ""}</span>
-              </div>
-              <div className="row-actions">
-                <span className={item.status === "unread" ? "badge warn" : "badge"}>
-                  <Icon name={item.status === "unread" ? "clock" : "check"} size={12} />
-                  {item.status === "unread" ? "Sin leer" : "Leída"}
-                </span>
-                {item.status === "unread" && (
-                  <button type="button" className="ghost-action" onClick={() => onMarkRead?.(item.id)}>
-                    Marcar leída
-                  </button>
-                )}
-                <button type="button" className="icon-action mini" onClick={() => onArchive([item.id])} aria-label="Archivar notificación" title="Archivar">
-                  <Icon name="trash" size={14} />
-                </button>
-              </div>
-            </article>
-          ))}
-        </section>
-      )}
-    </div>
   )
 }
 
@@ -3297,6 +3284,7 @@ function TalentBankView({ token, searches, onRefresh, role }) {
                         type="button"
                         className="icon-action mini"
                         onClick={() => setBankMenuOpen((id) => (id === candidate.id ? null : candidate.id))}
+                        aria-label="Más acciones del candidato en banca"
                         title="Más acciones"
                       >
                         ⋯
@@ -3608,6 +3596,75 @@ function MailComposerModal({ value, busy, canSendMail, oauthConfigured, googleCo
               {busy ? "Enviando..." : "Enviar"}
             </button>
           </div>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function InterviewAnalysisModal({ value, busy, onChange, onClose, onAnalyze }) {
+  const transcript = value.transcript || ""
+  const result = value.result
+  const transcriptError = transcript.trim() && transcript.trim().length < 40
+    ? "Pegá al menos 40 caracteres para generar una devolución útil."
+    : ""
+
+  return (
+    <div className="modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) onClose() }}>
+      <section className="modal-card composer-card" role="dialog" aria-labelledby="interview-analysis-title" aria-modal="true">
+        <div className="modal-head">
+          <div>
+            <p className="eyebrow">Entrevista IA</p>
+            <h3 id="interview-analysis-title">Análisis de entrevista</h3>
+          </div>
+          <button type="button" className="icon-action" onClick={onClose} aria-label="Cerrar análisis de entrevista">
+            <Icon name="close" size={14} />
+          </button>
+        </div>
+        <div className="form-grid">
+          <Field
+            label="Transcripción"
+            required
+            helper="Pegá la transcripción completa o revisá el texto capturado por la grabación."
+            error={transcriptError}
+          >
+            <textarea
+              value={transcript}
+              onChange={(event) => onChange({ ...value, transcript: event.target.value })}
+              placeholder="Pegá acá la transcripción de la entrevista..."
+              rows={9}
+              autoFocus
+            />
+          </Field>
+          <div className="pill-row" style={{ justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              className="primary-action fit"
+              disabled={busy || transcript.trim().length < 40}
+              data-busy={busy || undefined}
+              onClick={() => onAnalyze(transcript)}
+            >
+              {busy ? "Analizando..." : "Analizar con IA"}
+            </button>
+          </div>
+          {result && (
+            <div className="panel panel-compact">
+              <div className="metric-row">
+                <div>
+                  <span>Fit score</span>
+                  <strong>{Math.round(Number(result.fit_score || 0))}%</strong>
+                </div>
+                <div>
+                  <span>Decisión</span>
+                  <strong>{result.recommendation ? "Recomendado" : "No recomendado"}</strong>
+                </div>
+              </div>
+              <p className="text-sm text-muted" style={{ lineHeight: 1.6 }}>{result.summary || "Sin resumen generado."}</p>
+              <Feedback variant="info" title="Feedback para Talent">
+                {result.talent_feedback || "Sin comentario adicional."}
+              </Feedback>
+            </div>
+          )}
         </div>
       </section>
     </div>
@@ -4190,6 +4247,10 @@ function normalizeDescriptionToHtml(value) {
   return String(value).split("\n").map((line) => line.trim() ? `<p>${escapeHtml(line)}</p>` : "<br />").join("")
 }
 
+function safeDescriptionHtml(value) {
+  return DOMPurify.sanitize(normalizeDescriptionToHtml(value))
+}
+
 function escapeHtml(value) {
   return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
 }
@@ -4371,4 +4432,4 @@ function interviewStatusLabel(status) {
   return map[String(status || "").toLowerCase()] || "Entrevista"
 }
 
-export default App
+export default AppWithErrorBoundary

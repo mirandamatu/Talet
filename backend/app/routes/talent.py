@@ -192,6 +192,7 @@ def create_candidate(
             raise HTTPException(status_code=500, detail=f'Could not upload CV: {local_exc}')
     candidate = Candidate(
         search_id=search_id,
+        client_id=search.client_id,
         full_name=full_name,
         email=email,
         short_profile=short_profile,
