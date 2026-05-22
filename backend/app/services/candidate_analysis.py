@@ -53,12 +53,14 @@ def recommendation_level_from_score(score: float | None) -> str:
 
 
 def serialize_analysis(row: SearchCandidateAnalysis, candidate_name: str) -> dict:
+    score_10 = float(row.match_score or 0)
     return {
         "candidate_id": row.candidate_id,
         "search_id": row.search_id,
         "candidate_name": candidate_name,
         "match_score": row.match_score,
         "score_10": row.match_score,
+        "match_percentage": round(score_10 * 10),
         "recommendation_level": row.recommendation_level,
         "summary": row.summary,
         "reasons": row.reasons_json or [],

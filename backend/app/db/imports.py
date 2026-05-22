@@ -9,6 +9,7 @@ from app.models.candidate_note_visibility import CandidateNoteVisibility  # noqa
 from app.models.candidate_outreach import CandidateOutreach  # noqa: F401
 from app.models.candidate_outreach_token import CandidateOutreachToken  # noqa: F401
 from app.models.candidate_presentation import CandidatePresentation  # noqa: F401
+from app.models.candidate_search_assignment import CandidateSearchAssignment  # noqa: F401
 from app.models.client import Client  # noqa: F401
 from app.models.client_profile import ClientContact, ClientProfile  # noqa: F401
 from app.models.hub import Conversation, ConversationParticipant, ConversationSummary, MeetingIntegration, Message  # noqa: F401

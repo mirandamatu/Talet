@@ -30,3 +30,4 @@ class Candidate(Base):
     feedback = relationship('Feedback', back_populates='candidate')
     interviews = relationship('Interview', back_populates='candidate')
     presentations = relationship('CandidatePresentation', back_populates='candidate')
+    search_assignments = relationship('CandidateSearchAssignment', back_populates='candidate')

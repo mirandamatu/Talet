@@ -442,6 +442,25 @@ p {
   background: var(--surface);
 }
 
+.cv-pdf-viewer .react-pdf__Document {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-4);
+}
+
+.cv-pdf-viewer .react-pdf__Page {
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
+}
+
+.cv-pdf-viewer canvas {
+  max-width: 100%;
+  height: auto !important;
+  display: block;
+}
+
 .composer-card {
   width: min(32rem, calc(100vw - var(--space-8)));
 }

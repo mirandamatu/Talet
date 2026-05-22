@@ -1,7 +1,7 @@
 import json
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
@@ -18,7 +18,7 @@ from app.models.search_ai_question import SearchAIQuestion
 from app.models.search_document import SearchDocument
 from app.models.status_history import StatusHistory
 from app.models.user import User
-from app.schemas.candidate import CandidateBankOut, CandidateOut, CandidateStatusUpdate, CandidateUpdate
+from app.schemas.candidate import CandidateAssignmentCreate, CandidateBankOut, CandidateOut, CandidateStatusUpdate, CandidateUpdate
 from app.schemas.client import ClientOut
 from app.schemas.feedback import FeedbackCreate
 from app.schemas.interview import InterviewCreate, InterviewOut
@@ -38,6 +38,14 @@ from app.services.presentations import get_presentation, is_presented_to_client,
 from app.services.search_states import classify_search, get_search_candidate_counts
 from app.services.tenancy import ensure_candidate_in_organization, require_organization_id
 from app.services.user_clients import can_access_client, get_accessible_clients, get_user_client_ids
+from app.services.candidate_assignments import (
+    assign_candidate_to_search,
+    get_assignment,
+    list_assignments_for_candidate,
+    list_candidates_for_search,
+    serialize_assignment,
+    sync_assignment_status,
+)
 
 router = APIRouter(tags=['client'])
 
@@ -58,7 +66,24 @@ class InterviewCancelPayload(BaseModel):
     reason: str | None = None
 
 
-def _serialize_candidate(candidate: Candidate, db: Session, include_internal: bool = False, viewer_role: str | None = None) -> dict:
+def _resolve_candidate_search_id(candidate: Candidate, db: Session, search_id: int | None = None) -> int | None:
+    if search_id is not None:
+        return search_id
+    if candidate.search_id is not None:
+        return candidate.search_id
+    assignment = list_assignments_for_candidate(db, candidate.id)
+    return assignment[0].search_id if assignment else None
+
+
+def _serialize_candidate(
+    candidate: Candidate,
+    db: Session,
+    include_internal: bool = False,
+    viewer_role: str | None = None,
+    search_id: int | None = None,
+) -> dict:
+    context_search_id = _resolve_candidate_search_id(candidate, db, search_id)
+    assignment = get_assignment(db, candidate.id, context_search_id) if context_search_id is not None else None
     feedback_rows = (
         db.query(Feedback)
         .filter(Feedback.candidate_id == candidate.id)
@@ -72,7 +97,7 @@ def _serialize_candidate(candidate: Candidate, db: Session, include_internal: bo
         {
             'id': row.id,
             'candidate_id': row.candidate_id,
-            'search_id': candidate.search_id,
+            'search_id': context_search_id,
             'created_by_user_id': row.created_by,
             'created_at': row.created_at.isoformat() if row.created_at else None,
             'main_reason': row.main_reason,
@@ -86,13 +111,14 @@ def _serialize_candidate(candidate: Candidate, db: Session, include_internal: bo
     ]
 
     ai_fit = get_candidate_fit_fields(db, candidate.id)
-    presented = is_presented_to_client(db, candidate.id, candidate.search_id)
-    presentation = get_presentation(db, candidate.id, candidate.search_id)
+    presented = context_search_id is not None and is_presented_to_client(db, candidate.id, context_search_id)
+    presentation = get_presentation(db, candidate.id, context_search_id) if context_search_id is not None else None
     hide_cv = viewer_role == 'CLIENTE' and not presented
+    assignments = list_assignments_for_candidate(db, candidate.id)
 
     return {
         'id': candidate.id,
-        'search_id': candidate.search_id,
+        'search_id': context_search_id,
         'full_name': candidate.full_name,
         'email': candidate.email,
         'short_profile': candidate.short_profile,
@@ -110,6 +136,8 @@ def _serialize_candidate(candidate: Candidate, db: Session, include_internal: bo
         'client_feedback': client_feedback,
         'is_presented_to_client': presented,
         'presented_at': presentation.presented_at.isoformat() if presentation else None,
+        'assignment_status': assignment.status if assignment else candidate.status,
+        'assignments': [serialize_assignment(row) for row in assignments],
         **ai_fit,
     }
 
@@ -171,12 +199,13 @@ def _serialize_search(search: Search, db: Session) -> dict:
     }
 
 
-def _is_hidden_for_client(user, candidate: Candidate, db: Session) -> bool:
+def _is_hidden_for_client(user, candidate: Candidate, db: Session, search_id: int | None = None) -> bool:
     if user.role != 'CLIENTE':
         return candidate.archived_at is not None
     if candidate.archived_at is not None:
         return True
-    return not is_presented_to_client(db, candidate.id, candidate.search_id)
+    context_search_id = _resolve_candidate_search_id(candidate, db, search_id)
+    return context_search_id is None or not is_presented_to_client(db, candidate.id, context_search_id)
 
 
 def _get_latest_cancel_reason(db: Session, interview_id: int) -> str | None:
@@ -308,13 +337,58 @@ def list_en_banca_candidates(user=Depends(get_current_user), db: Session = Depen
     ]
 
 
+@router.get('/candidates', response_model=list[CandidateOut], dependencies=[Depends(require_roles('COMERCIAL', 'TALENT', 'SUPERADMIN'))])
+def list_all_candidates(user=Depends(get_current_user), db: Session = Depends(get_db)):
+    if user.organization_id is None:
+        return []
+    client_ids = {c.id for c in get_accessible_clients(user, db)}
+    if not client_ids and user.role != 'SUPERADMIN':
+        return []
+    q = db.query(Candidate).filter(Candidate.archived_at.is_(None))
+    if user.role != 'SUPERADMIN':
+        q = q.filter(Candidate.client_id.in_(client_ids))
+    candidates = q.order_by(Candidate.id.desc()).all()
+    return [_serialize_candidate(candidate, db, include_internal=True, viewer_role=user.role) for candidate in candidates]
+
+
+@router.post('/candidates/{candidate_id}/assignments', response_model=CandidateOut, dependencies=[Depends(require_roles('TALENT', 'SUPERADMIN'))])
+def assign_candidate(candidate_id: int, payload: CandidateAssignmentCreate, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    candidate = db.get(Candidate, candidate_id)
+    if not candidate or candidate.archived_at is not None:
+        raise HTTPException(status_code=404, detail='Candidate not found')
+    ensure_candidate_in_organization(db, user, candidate)
+    if not payload.search_ids:
+        raise HTTPException(status_code=400, detail='At least one search is required')
+    first_search_id = None
+    for search_id in payload.search_ids:
+        search = db.get(Search, search_id)
+        if not search or search.archived_at is not None:
+            raise HTTPException(status_code=404, detail='Search not found')
+        require_organization_id(user)
+        if not can_access_client(user, search.client_id, db):
+            raise HTTPException(status_code=404, detail='Search not found')
+        assign_candidate_to_search(
+            db,
+            candidate=candidate,
+            search=search,
+            status=payload.status or 'en_revision',
+            assigned_by_user_id=user.id,
+            notes=payload.notes,
+        )
+        if first_search_id is None:
+            first_search_id = search.id
+    db.refresh(candidate)
+    return _serialize_candidate(candidate, db, include_internal=True, viewer_role=user.role, search_id=first_search_id)
+
+
 @router.get('/candidates/{candidate_id}', response_model=CandidateOut, dependencies=[Depends(require_roles('CLIENTE', 'COMERCIAL', 'TALENT', 'SUPERADMIN'))])
-def get_candidate(candidate_id: int, user=Depends(get_current_user), db: Session = Depends(get_db)):
+def get_candidate(candidate_id: int, search_id: int | None = Query(None), user=Depends(get_current_user), db: Session = Depends(get_db)):
     candidate = db.get(Candidate, candidate_id)
     if not candidate:
         raise HTTPException(status_code=404, detail='Candidate not found')
-    if candidate.search_id is not None:
-        search = db.get(Search, candidate.search_id)
+    context_search_id = _resolve_candidate_search_id(candidate, db, search_id)
+    if context_search_id is not None:
+        search = db.get(Search, context_search_id)
         if not search:
             raise HTTPException(status_code=404, detail='Search not found')
         if not can_access_client(user, search.client_id, db):
@@ -328,9 +402,9 @@ def get_candidate(candidate_id: int, user=Depends(get_current_user), db: Session
             raise HTTPException(status_code=404, detail='Candidate not found')
         if user.role == 'COMERCIAL' and candidate.client_id not in set(get_user_client_ids(user)):
             raise HTTPException(status_code=404, detail='Candidate not found')
-    if _is_hidden_for_client(user, candidate, db):
+    if _is_hidden_for_client(user, candidate, db, context_search_id):
         raise HTTPException(status_code=404, detail='Candidate not found')
-    return _serialize_candidate(candidate, db, include_internal=user.role in ('COMERCIAL', 'TALENT', 'SUPERADMIN'), viewer_role=user.role)
+    return _serialize_candidate(candidate, db, include_internal=user.role in ('COMERCIAL', 'TALENT', 'SUPERADMIN'), viewer_role=user.role, search_id=context_search_id)
 
 
 @router.patch('/candidates/{candidate_id}', response_model=CandidateOut, dependencies=[Depends(require_roles('COMERCIAL', 'TALENT', 'SUPERADMIN'))])
@@ -362,12 +436,18 @@ def update_candidate(candidate_id: int, payload: CandidateUpdate, user=Depends(g
             raise HTTPException(status_code=404, detail='Search not found')
         if search.manual_state == 'cerrada':
             raise HTTPException(status_code=400, detail='Search is closed')
-        candidate.search_id = search.id
-        candidate.client_id = search.client_id
+        assign_candidate_to_search(
+            db,
+            candidate=candidate,
+            search=search,
+            status=data.get('status') or 'en_revision',
+            assigned_by_user_id=user.id,
+        )
         if data.get('status') is None and candidate.status == 'en_banca':
             candidate.status = 'applied'
     if 'status' in data and data['status'] is not None:
         candidate.status = data['status']
+        sync_assignment_status(db, candidate.id, _resolve_candidate_search_id(candidate, db), candidate.status)
         if data['status'] == 'descartado':
             candidate.archived_at = datetime.now(timezone.utc)
     if 'full_name' in data and data['full_name'] is not None:
@@ -390,14 +470,12 @@ def list_candidates(search_id: int, user=Depends(get_current_user), db: Session 
         raise HTTPException(status_code=404, detail='Search not found')
     if not can_access_client(user, search.client_id, db):
         raise HTTPException(status_code=404, detail='Search not found')
-    query = db.query(Candidate).filter(Candidate.search_id == search_id)
+    pairs = list_candidates_for_search(db, search_id, include_archived=user.role != 'CLIENTE')
+    candidates = [candidate for candidate, _assignment in pairs]
     if user.role == 'CLIENTE':
-        query = query.filter(Candidate.archived_at.is_(None))
-    candidates = query.order_by(Candidate.id).all()
-    if user.role == 'CLIENTE':
-        candidates = [c for c in candidates if is_presented_to_client(db, c.id, c.search_id)]
+        candidates = [c for c in candidates if is_presented_to_client(db, c.id, search_id)]
     include_internal = user.role in ('COMERCIAL', 'TALENT', 'SUPERADMIN')
-    return [_serialize_candidate(candidate, db, include_internal=include_internal, viewer_role=user.role) for candidate in candidates]
+    return [_serialize_candidate(candidate, db, include_internal=include_internal, viewer_role=user.role, search_id=search_id) for candidate in candidates]
 
 
 @router.get('/searches/{search_id}/internal-notes', dependencies=[Depends(require_roles('COMERCIAL', 'TALENT', 'SUPERADMIN'))])
@@ -470,16 +548,17 @@ def update_candidate_internal_notes(candidate_id: int, payload: InternalNotesUpd
 
 
 @router.patch('/candidates/{candidate_id}/status', dependencies=[Depends(require_roles('CLIENTE'))])
-def update_candidate_status(candidate_id: int, payload: CandidateStatusUpdate, user=Depends(get_current_user), db: Session = Depends(get_db)):
+def update_candidate_status(candidate_id: int, payload: CandidateStatusUpdate, search_id: int | None = Query(None), user=Depends(get_current_user), db: Session = Depends(get_db)):
     candidate = db.get(Candidate, candidate_id)
     if not candidate:
         raise HTTPException(status_code=404, detail='Candidate not found')
-    search = db.get(Search, candidate.search_id)
+    context_search_id = _resolve_candidate_search_id(candidate, db, search_id)
+    search = db.get(Search, context_search_id) if context_search_id is not None else None
     if not search:
         raise HTTPException(status_code=404, detail='Search not found')
     if not can_access_client(user, search.client_id, db):
         raise HTTPException(status_code=404, detail='Search not found')
-    if _is_hidden_for_client(user, candidate, db):
+    if _is_hidden_for_client(user, candidate, db, context_search_id):
         raise HTTPException(status_code=404, detail='Candidate not found')
 
     status = payload.status
@@ -495,6 +574,7 @@ def update_candidate_status(candidate_id: int, payload: CandidateStatusUpdate, u
 
     old_status = candidate.status
     candidate.status = status
+    sync_assignment_status(db, candidate.id, context_search_id, status)
 
     history = StatusHistory(
         candidate_id=candidate.id,
@@ -548,16 +628,17 @@ def update_candidate_status(candidate_id: int, payload: CandidateStatusUpdate, u
 
 
 @router.post('/candidates/{candidate_id}/feedback', dependencies=[Depends(require_roles('CLIENTE'))])
-def create_feedback(candidate_id: int, payload: FeedbackCreate, user=Depends(get_current_user), db: Session = Depends(get_db)):
+def create_feedback(candidate_id: int, payload: FeedbackCreate, search_id: int | None = Query(None), user=Depends(get_current_user), db: Session = Depends(get_db)):
     candidate = db.get(Candidate, candidate_id)
     if not candidate:
         raise HTTPException(status_code=404, detail='Candidate not found')
-    search = db.get(Search, candidate.search_id)
+    context_search_id = _resolve_candidate_search_id(candidate, db, search_id)
+    search = db.get(Search, context_search_id) if context_search_id is not None else None
     if not search:
         raise HTTPException(status_code=404, detail='Search not found')
     if not can_access_client(user, search.client_id, db):
         raise HTTPException(status_code=404, detail='Search not found')
-    if _is_hidden_for_client(user, candidate, db):
+    if _is_hidden_for_client(user, candidate, db, context_search_id):
         raise HTTPException(status_code=404, detail='Candidate not found')
 
     fb = Feedback(
@@ -574,20 +655,21 @@ def create_feedback(candidate_id: int, payload: FeedbackCreate, user=Depends(get
 
 
 @router.post('/candidates/{candidate_id}/interviews', response_model=InterviewOut, dependencies=[Depends(require_roles('CLIENTE'))])
-def book_interview(candidate_id: int, payload: InterviewCreate, user=Depends(get_current_user), db: Session = Depends(get_db)):
+def book_interview(candidate_id: int, payload: InterviewCreate, search_id: int | None = Query(None), user=Depends(get_current_user), db: Session = Depends(get_db)):
     candidate = db.get(Candidate, candidate_id)
     if not candidate:
         raise HTTPException(status_code=404, detail='Candidate not found')
-    search = db.get(Search, candidate.search_id)
+    context_search_id = _resolve_candidate_search_id(candidate, db, search_id)
+    search = db.get(Search, context_search_id) if context_search_id is not None else None
     if not search:
         raise HTTPException(status_code=404, detail='Search not found')
     if not can_access_client(user, search.client_id, db):
         raise HTTPException(status_code=404, detail='Search not found')
-    if _is_hidden_for_client(user, candidate, db):
+    if _is_hidden_for_client(user, candidate, db, context_search_id):
         raise HTTPException(status_code=404, detail='Candidate not found')
 
     slot = db.get(AvailabilitySlot, payload.slot_id)
-    if not slot or slot.search_id != candidate.search_id:
+    if not slot or slot.search_id != context_search_id:
         raise HTTPException(status_code=400, detail='Invalid slot')
     if slot.is_booked:
         raise HTTPException(status_code=400, detail='Slot already booked')

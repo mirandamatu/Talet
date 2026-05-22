@@ -12,11 +12,11 @@ ARCHIVE_AFTER_DAYS = 30
 
 
 ACTIVE_SEARCH_CANDIDATE_STATUSES = {
-    "en_revision",
-    "entrevistado",
     "aprobado",
-    "pendiente_entrevista",
-    "applied",
+    "activo",
+    "contratado",
+    "en_proyecto",
+    "trabajando",
 }
 
 
@@ -33,14 +33,34 @@ def normalize_manual_state(value: str | None) -> str | None:
 
 def get_search_candidate_counts(db: Session, search_id: int) -> dict[str, int]:
     from app.models.candidate import Candidate
+    from app.models.candidate_search_assignment import CandidateSearchAssignment
 
     rows = (
-        db.query(Candidate)
-        .filter(Candidate.search_id == search_id, Candidate.archived_at.is_(None))
+        db.query(CandidateSearchAssignment, Candidate)
+        .join(Candidate, Candidate.id == CandidateSearchAssignment.candidate_id)
+        .filter(
+            CandidateSearchAssignment.search_id == search_id,
+            CandidateSearchAssignment.archived_at.is_(None),
+            Candidate.archived_at.is_(None),
+        )
         .all()
     )
+    if not rows:
+        legacy_rows = (
+            db.query(Candidate)
+            .filter(Candidate.search_id == search_id, Candidate.archived_at.is_(None))
+            .all()
+        )
+        return {
+            "candidate_count": len(legacy_rows),
+            "active_candidate_count": sum(1 for row in legacy_rows if row.status in ACTIVE_SEARCH_CANDIDATE_STATUSES),
+        }
     candidate_count = len(rows)
-    active_candidate_count = sum(1 for row in rows if row.status in ACTIVE_SEARCH_CANDIDATE_STATUSES)
+    active_candidate_count = sum(
+        1
+        for assignment, candidate in rows
+        if (assignment.status or candidate.status) in ACTIVE_SEARCH_CANDIDATE_STATUSES
+    )
     return {
         "candidate_count": candidate_count,
         "active_candidate_count": active_candidate_count,

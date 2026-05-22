@@ -45,6 +45,7 @@ const ROLE_NAV = {
   COMERCIAL: [
     { key: "overview", label: "Inicio" },
     { key: "searches", label: "Búsquedas" },
+    { key: "projects", label: "Proyectos / En curso" },
     { key: "create", label: "Crear búsqueda" },
     { key: "talentBank", label: "Banco de talento" },
     { key: "calendar", label: "Calendario" },
@@ -56,6 +57,7 @@ const ROLE_NAV = {
   TALENT: [
     { key: "overview", label: "Inicio" },
     { key: "searches", label: "Búsquedas" },
+    { key: "projects", label: "Proyectos / En curso" },
     { key: "candidates", label: "Candidatos" },
     { key: "talentBank", label: "Banco de talento" },
     { key: "calendar", label: "Calendario" },
@@ -67,6 +69,7 @@ const ROLE_NAV = {
   CLIENTE: [
     { key: "overview", label: "Inicio" },
     { key: "searches", label: "Búsquedas" },
+    { key: "projects", label: "Proyectos / En curso" },
     { key: "create", label: "Crear búsqueda" },
     { key: "candidates", label: "Candidatos" },
     { key: "calendar", label: "Calendario" },
@@ -129,6 +132,7 @@ function App() {
   const [searches, setSearches] = useState([])
   const [metricsSummary, setMetricsSummary] = useState(null)
   const [candidatesBySearch, setCandidatesBySearch] = useState({})
+  const [globalCandidates, setGlobalCandidates] = useState([])
   const [selectedSearch, setSelectedSearch] = useState(null)
   const [selectedCandidate, setSelectedCandidate] = useState(null)
   const [openCandidateWithEdit, setOpenCandidateWithEdit] = useState(false)
@@ -164,8 +168,8 @@ function App() {
   const role = user?.role
   const nav = ROLE_NAV[role] || []
   const allCandidates = useMemo(
-    () => Object.values(candidatesBySearch).flat().filter(Boolean),
-    [candidatesBySearch]
+    () => globalCandidates.length ? globalCandidates : Object.values(candidatesBySearch).flat().filter(Boolean),
+    [globalCandidates, candidatesBySearch]
   )
   const stats = useMemo(() => buildStats(searches, allCandidates), [searches, allCandidates])
   const filteredSearches = useMemo(() => {
@@ -176,6 +180,14 @@ function App() {
       return byClient && byText
     })
   }, [searches, query, clientFilter])
+  const openSearches = useMemo(
+    () => filteredSearches.filter((search) => (search.search_state || "abierta") !== "activa"),
+    [filteredSearches]
+  )
+  const projectSearches = useMemo(
+    () => filteredSearches.filter((search) => search.search_state === "activa"),
+    [filteredSearches]
+  )
   const filteredCandidates = useMemo(() => {
     const q = query.trim().toLowerCase()
     return allCandidates.filter((candidate) => {
@@ -245,6 +257,12 @@ function App() {
   }
 
   async function loadAllCandidates(searchRows = searches) {
+    if (role !== "CLIENTE") {
+      const rows = await apiFetch("/candidates", {}, token).catch(() => null)
+      if (rows) {
+        setGlobalCandidates(rows || [])
+      }
+    }
     const pairs = await Promise.all(
       (searchRows || []).map(async (search) => {
         const list = await apiFetch(`/searches/${search.id}/candidates`, {}, token).catch(() => [])
@@ -266,7 +284,8 @@ function App() {
   }
 
   async function openCandidate(candidate, options = {}) {
-    const detail = await apiFetch(`/candidates/${candidate.id}`, {}, token)
+    const contextSearchId = candidate.search_id || candidate._search?.id
+    const detail = await apiFetch(`/candidates/${candidate.id}${contextSearchId ? `?search_id=${contextSearchId}` : ""}`, {}, token)
     setSelectedCandidate({ ...candidate, ...detail })
     setOpenCandidateWithEdit(!!options.edit)
     const [analyses, notes] = await Promise.all([
@@ -305,6 +324,7 @@ function App() {
       }
       setSelectedCandidate((prev) => prev && Number(prev.id) === Number(candidateId) ? { ...prev, ...patch } : prev)
       setCandidatesBySearch((prev) => patchCandidateMap(prev, candidateId, patch))
+      setGlobalCandidates((prev) => patchCandidateList(prev, candidateId, patch))
     } catch (err) {
       setError(err.message || "No se pudo analizar el candidato.")
     } finally {
@@ -662,14 +682,18 @@ function App() {
           <Metrics role={role} stats={stats} metricsSummary={metricsSummary} searches={searches} candidates={allCandidates} clients={clients} />
         )}
         {active === "searches" && !selectedSearch && (
-          <SearchesView searches={filteredSearches} clients={clients} role={role} token={token} onOpen={openSearch} onRefresh={refreshAll} />
+          <SearchesView searches={openSearches} clients={clients} role={role} token={token} mode="searches" onOpen={openSearch} onRefresh={refreshAll} />
         )}
-        {active === "searches" && selectedSearch && !selectedCandidate && (
+        {active === "projects" && !selectedSearch && (
+          <SearchesView searches={projectSearches} clients={clients} role={role} token={token} mode="projects" onOpen={openSearch} onRefresh={refreshAll} />
+        )}
+        {(active === "searches" || active === "projects") && selectedSearch && !selectedCandidate && (
           <SearchDetail
             search={selectedSearch}
             role={role}
             token={token}
             candidates={candidatesBySearch[selectedSearch.id] || []}
+            allCandidates={globalCandidates}
             analyses={searchAnalyses[selectedSearch.id] || []}
             busyAction={busyAction}
             onBack={() => setSelectedSearch(null)}
@@ -689,6 +713,7 @@ function App() {
           <CandidatesView
             candidates={filteredCandidates}
             searches={searches}
+            clients={clients}
             token={token}
             role={role}
             onOpen={openCandidate}
@@ -722,6 +747,7 @@ function App() {
             onCandidatePatch={(patch) => {
               setSelectedCandidate((prev) => prev ? { ...prev, ...patch } : prev)
               setCandidatesBySearch((prev) => patchCandidateMap(prev, selectedCandidate.id, patch))
+              setGlobalCandidates((prev) => patchCandidateList(prev, selectedCandidate.id, patch))
             }}
           />
         )}
@@ -1166,10 +1192,11 @@ function Metrics({ role, stats, metricsSummary, searches, candidates, clients })
   )
 }
 
-function SearchesView({ searches, clients, role, token, onOpen, onRefresh }) {
+function SearchesView({ searches, clients, role, token, mode = "searches", onOpen, onRefresh }) {
   const grouped = {
     abierta: searches.filter((search) => (search.search_state || "abierta") === "abierta"),
     activa: searches.filter((search) => search.search_state === "activa"),
+    desactivada: searches.filter((search) => search.search_state === "desactivada"),
     eliminada: searches.filter((search) => search.search_state === "eliminada")
   }
   async function moveSearch(search, manualState) {
@@ -1181,11 +1208,14 @@ function SearchesView({ searches, clients, role, token, onOpen, onRefresh }) {
   }
   return (
     <div className="view-stack">
-      {[
-        { key: "abierta", title: "Búsquedas abiertas" },
-        { key: "activa", title: "Búsquedas activas" },
-        { key: "eliminada", title: "Búsquedas eliminadas" }
-      ].map((group) => (
+      {(mode === "projects"
+        ? [{ key: "activa", title: "Proyectos / En curso" }]
+        : [
+          { key: "abierta", title: "Búsquedas abiertas" },
+          { key: "desactivada", title: "Búsquedas desactivadas" },
+          { key: "eliminada", title: "Búsquedas eliminadas" }
+        ]
+      ).map((group) => (
         <Panel key={group.key} title={`${group.title} (${grouped[group.key].length})`}>
           <section className="card-grid">
             {grouped[group.key].map((search) => (
@@ -1211,6 +1241,7 @@ function SearchesView({ searches, clients, role, token, onOpen, onRefresh }) {
                     <>
                       {group.key !== "abierta" && <button type="button" className="ghost-action small" onClick={() => moveSearch(search, "abierta")}>Mover a abierta</button>}
                       {group.key !== "activa" && <button type="button" className="ghost-action small" onClick={() => moveSearch(search, "activa")}>Mover a activa</button>}
+                      {group.key !== "desactivada" && <button type="button" className="ghost-action small" onClick={() => moveSearch(search, "desactivada")}>Desactivar</button>}
                       {group.key !== "eliminada" && <button type="button" className="danger-action small" onClick={() => moveSearch(search, "eliminada")}>Mover a eliminada</button>}
                     </>
                   )}
@@ -1227,7 +1258,7 @@ function SearchesView({ searches, clients, role, token, onOpen, onRefresh }) {
   )
 }
 
-function SearchDetail({ search, role, token, candidates, analyses, busyAction, onBack, onOpenCandidate, onReloadCandidates, onReanalyzeSearch, onAnalyzeCandidates, onMatchCandidates, onComposeMail, onChanged }) {
+function SearchDetail({ search, role, token, candidates, allCandidates = [], analyses, busyAction, onBack, onOpenCandidate, onReloadCandidates, onReanalyzeSearch, onAnalyzeCandidates, onMatchCandidates, onComposeMail, onChanged }) {
   const toast = useToast()
   const confirm = useConfirm()
   const [metaEditing, setMetaEditing] = useState(false)
@@ -1360,13 +1391,13 @@ function SearchDetail({ search, role, token, candidates, analyses, busyAction, o
                 <button type="button" className="danger-action" onClick={archiveSearch}>Eliminar</button>
               </>
             )}
-            {(role === "TALENT" || role === "SUPERADMIN" || role === "COMERCIAL") && (
+            {role === "TALENT" && (
               <>
                 <button type="button" className="primary-action fit" onClick={onAnalyzeCandidates} disabled={busyAction === "search-candidates-ai"}>
-                  {busyAction === "search-candidates-ai" ? "Analizando candidatos..." : "Analizar candidatos con IA"}
+                  {busyAction === "search-candidates-ai" ? "Analizando..." : "Analizar candidatos con IA"}
                 </button>
                 <button type="button" className="ghost-action fit" onClick={onMatchCandidates} disabled={busyAction === "search-match-ai"}>
-                  {busyAction === "search-match-ai" ? "Matching..." : "Matching IA global"}
+                  {busyAction === "search-match-ai" ? "Analizando..." : "Matching IA global"}
                 </button>
                 {selectedAnalysisIds.length > 0 && (
                   <button
@@ -1393,7 +1424,7 @@ function SearchDetail({ search, role, token, candidates, analyses, busyAction, o
           </div>
           {message && <Feedback variant="success">{message}</Feedback>}
           <AiQuestionsPanel search={search} busy={busyAction === "search-ai"} onReanalyze={onReanalyzeSearch} />
-          {(role === "TALENT" || role === "SUPERADMIN" || role === "COMERCIAL") && (
+          {role === "TALENT" && (
             <Panel title="Agente de análisis de candidatos">
               <div className="entity-list">
                 {(analyses || []).map((item) => (
@@ -1411,7 +1442,7 @@ function SearchDetail({ search, role, token, candidates, analyses, busyAction, o
                     </label>
                     <div>
                       <strong>{item.candidate_name}</strong>
-                      <span>{Math.round(Number(item.match_score || 0))}% · {capitalize(item.recommendation_level || "bajo")}</span>
+                      <span>{formatMatchPercent(item)} · {capitalize(item.recommendation_level || "bajo")}</span>
                       <small className="muted">{item.summary || "Sin resumen generado."}</small>
                     </div>
                     <div className="row-actions">
@@ -1445,7 +1476,7 @@ function SearchDetail({ search, role, token, candidates, analyses, busyAction, o
           </Panel>
           {(role === "TALENT" || role === "SUPERADMIN") && <BankRecommendations token={token} search={search} />}
           {(role === "TALENT" || role === "SUPERADMIN") && (
-            <UploadCandidate searchId={search.id} token={token} onUploaded={onReloadCandidates} />
+            <AssignExistingCandidates search={search} candidates={allCandidates} assignedCandidates={candidates} token={token} onAssigned={onReloadCandidates} />
           )}
           <Panel title="Candidatos">
             <div className="entity-list">
@@ -1496,24 +1527,83 @@ function SearchDetail({ search, role, token, candidates, analyses, busyAction, o
   )
 }
 
-function CandidatesView({ candidates, searches, token, role, onOpen, onChanged }) {
+function AssignExistingCandidates({ search, candidates, assignedCandidates, token, onAssigned }) {
+  const toast = useToast()
+  const [selectedIds, setSelectedIds] = useState([])
+  const [busy, setBusy] = useState(false)
+  const assignedIds = new Set((assignedCandidates || []).map((candidate) => Number(candidate.id)))
+  const available = (candidates || []).filter((candidate) => !assignedIds.has(Number(candidate.id)) && !["aprobado", "activo", "contratado", "en_proyecto", "trabajando"].includes(candidate.assignment_status || candidate.status))
+
+  async function submit(event) {
+    event.preventDefault()
+    if (!selectedIds.length) return
+    setBusy(true)
+    try {
+      await Promise.all(selectedIds.map((candidateId) => apiFetch(`/candidates/${candidateId}/assignments`, {
+        method: "POST",
+        body: JSON.stringify({ search_ids: [search.id], status: "en_revision" })
+      }, token)))
+      toast.success("Candidatos asignados", `${selectedIds.length} candidato(s) agregados a ${search.title}.`)
+      setSelectedIds([])
+      await onAssigned?.()
+    } catch (err) {
+      toast.error("No se pudo asignar", err.message || "Error del servidor.")
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
-    <section className="entity-list">
-      {candidates.map((candidate) => {
-        const search = searches.find((item) => Number(item.id) === Number(candidate.search_id))
-        return (
-          <CandidateRow
-            key={candidate.id}
-            candidate={{ ...candidate, _search: search || candidate._search }}
-            token={token}
-            role={role}
-            onOpen={(c, opts) => onOpen(c, opts)}
-            onChanged={onChanged}
-          />
-        )
-      })}
-      {candidates.length === 0 && <Empty text="No hay candidatos para los filtros actuales." />}
-    </section>
+    <Panel title="Asignar candidatos existentes" subtitle="Los candidatos se crean desde Candidatos y desde acá solo se vinculan a esta búsqueda.">
+      <form className="form-grid" onSubmit={submit}>
+        <Field label="Candidatos disponibles">
+          <select
+            multiple
+            size={Math.min(8, Math.max(3, available.length || 3))}
+            value={selectedIds.map(String)}
+            onChange={(event) => setSelectedIds(Array.from(event.target.selectedOptions).map((option) => Number(option.value)))}
+          >
+            {available.map((candidate) => (
+              <option key={candidate.id} value={candidate.id}>
+                {candidate.full_name} {candidate.email ? `· ${candidate.email}` : ""}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <button type="submit" className="primary-action fit" disabled={busy || !selectedIds.length}>
+          {busy ? "Asignando..." : "Asignar a búsqueda"}
+        </button>
+        {!available.length && <Empty text="No hay candidatos disponibles para asignar." />}
+      </form>
+    </Panel>
+  )
+}
+
+function CandidatesView({ candidates, searches, clients, token, role, onOpen, onChanged }) {
+  return (
+    <div className="view-stack">
+      {(role === "TALENT" || role === "SUPERADMIN") && (
+        <UploadCandidate clients={clients} searches={searches} token={token} onUploaded={onChanged} />
+      )}
+      <Panel title="Base de candidatos" subtitle="Creá candidatos una vez y asignales una o varias búsquedas.">
+        <section className="entity-list">
+          {candidates.map((candidate) => {
+            const search = searches.find((item) => Number(item.id) === Number(candidate.search_id))
+            return (
+              <CandidateRow
+                key={candidate.id}
+                candidate={{ ...candidate, _search: search || candidate._search }}
+                token={token}
+                role={role}
+                onOpen={(c, opts) => onOpen(c, opts)}
+                onChanged={onChanged}
+              />
+            )
+          })}
+          {candidates.length === 0 && <Empty text="No hay candidatos para los filtros actuales." />}
+        </section>
+      </Panel>
+    </div>
   )
 }
 
@@ -1565,12 +1655,15 @@ function CandidateRow({ candidate, token, role, onOpen, onChanged }) {
 
   const canManage = role === "TALENT" || role === "SUPERADMIN"
   const profileSnippet = stripHtml(candidate.short_profile || "").replace(/\s+/g, " ").trim()
+  const assignmentLabel = (candidate.assignments || []).length
+    ? (candidate.assignments || []).map((item) => item.search_title || `Búsqueda ${item.search_id}`).slice(0, 2).join(" · ")
+    : (candidate._search?.title || (candidate.search_id ? `Búsqueda ${candidate.search_id}` : "Sin búsqueda asignada"))
 
   return (
     <article className={menuOpen ? "entity-row candidate-list-row menu-open" : "entity-row candidate-list-row"}>
       <div className="candidate-row-meta">
         <div className="candidate-row-name">{candidate.full_name}</div>
-        <div className="candidate-row-context">{candidate._search?.title || `Búsqueda ${candidate.search_id}`}</div>
+        <div className="candidate-row-context">{assignmentLabel}</div>
         {profileSnippet
           ? <div className="candidate-row-profile" title={profileSnippet}>{profileSnippet}</div>
           : <div className="candidate-row-context">Sin descripción cargada.</div>}
@@ -1646,7 +1739,7 @@ function CandidateDetail({ candidate, role, token, busyAction, setBusyAction, st
       ? { status: effectiveStatus, feedback: { main_reason: feedback.main_reason, comment: feedback.comment, ratings_json: {} } }
       : { status: effectiveStatus, feedback: { comment: feedback.comment || "", ratings_json: {} } }
     try {
-      await apiFetch(`/candidates/${candidate.id}/status`, { method: "PATCH", body: JSON.stringify(body) }, token)
+      await apiFetch(`/candidates/${candidate.id}/status${candidate.search_id ? `?search_id=${candidate.search_id}` : ""}`, { method: "PATCH", body: JSON.stringify(body) }, token)
       alert("Estado actualizado.")
       if (effectiveStatus === "rechazado") {
         onComposeMail({
@@ -1664,7 +1757,7 @@ function CandidateDetail({ candidate, role, token, busyAction, setBusyAction, st
   async function presentToClient() {
     setBusyAction("candidate-present")
     try {
-      const result = await apiFetch(`/candidates/${candidate.id}/present`, { method: "POST", body: JSON.stringify({}) }, token)
+      const result = await apiFetch(`/candidates/${candidate.id}/present${candidate.search_id ? `?search_id=${candidate.search_id}` : ""}`, { method: "POST", body: JSON.stringify({}) }, token)
       onCandidatePatch?.({ is_presented_to_client: true, presented_at: result.presented_at })
       alert("Candidato presentado al cliente.")
     } finally {
@@ -1732,11 +1825,7 @@ function CandidateDetail({ candidate, role, token, busyAction, setBusyAction, st
               {(candidate.cv_file_name || "").toLowerCase().endsWith(".docx") && candidateCvHtml ? (
                 <div className="cv-html-viewer" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(candidateCvHtml) }} />
               ) : (
-                <div className="cv-pdf-viewer">
-                  <Document file={candidate.cv_file_url}>
-                    <Page pageNumber={1} width={420} />
-                  </Document>
-                </div>
+                <PdfPreview fileUrl={candidate.cv_file_url} />
               )}
               <div className="cv-icon-row pill-row">
                 <a className="icon-action mini" href={candidate.cv_file_url} target="_blank" rel="noreferrer" download aria-label="Descargar CV" title="Descargar CV">
@@ -1993,6 +2082,53 @@ function AiCandidatePanel({ candidate, busy, onReanalyze }) {
   )
 }
 
+function PdfPreview({ fileUrl }) {
+  const wrapRef = useRef(null)
+  const [width, setWidth] = useState(360)
+  const [pages, setPages] = useState(0)
+  const [error, setError] = useState("")
+
+  useEffect(() => {
+    const node = wrapRef.current
+    if (!node) return undefined
+    const update = () => setWidth(Math.max(280, Math.min(760, node.clientWidth - 24)))
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <div className="cv-pdf-viewer" ref={wrapRef}>
+      {error && (
+        <Feedback variant="error" title="No se pudo previsualizar el PDF">
+          {error}
+        </Feedback>
+      )}
+      <Document
+        file={fileUrl}
+        loading={<SkeletonList count={2} />}
+        error={<Feedback variant="error">El visor no pudo cargar este PDF. Podés abrirlo o descargarlo desde los botones.</Feedback>}
+        onLoadSuccess={({ numPages }) => {
+          setPages(numPages || 0)
+          setError("")
+        }}
+        onLoadError={(err) => setError(err?.message || "Archivo inválido o inaccesible.")}
+      >
+        {Array.from({ length: pages || 0 }, (_, index) => (
+          <Page
+            key={`page-${index + 1}`}
+            pageNumber={index + 1}
+            width={width}
+            renderAnnotationLayer={false}
+            renderTextLayer={false}
+          />
+        ))}
+      </Document>
+    </div>
+  )
+}
+
 function AiQuestionsPanel({ search, busy, onReanalyze }) {
   const questions = search.ai_questions || []
   return (
@@ -2068,11 +2204,13 @@ function InterviewModal({ interview, role, recorder, setRecorder, busy, onClose,
   )
 }
 
-function UploadCandidate({ searchId, token, onUploaded }) {
+function UploadCandidate({ searchId, clients = [], searches = [], token, onUploaded }) {
   const toast = useToast()
   const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
   const [shortProfile, setShortProfile] = useState("")
+  const [clientId, setClientId] = useState(clients[0]?.id || "")
+  const [selectedSearchIds, setSelectedSearchIds] = useState(searchId ? [Number(searchId)] : [])
   const [file, setFile] = useState(null)
   const [errors, setErrors] = useState({})
   const [submitError, setSubmitError] = useState("")
@@ -2085,8 +2223,13 @@ function UploadCandidate({ searchId, token, onUploaded }) {
     if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       next.email = "Email inválido."
     }
+    if (!searchId && !clientId && !selectedSearchIds.length) next.clientId = "Elegí un cliente o una búsqueda."
     return next
   }
+
+  useEffect(() => {
+    if (!clientId && clients[0]?.id) setClientId(clients[0].id)
+  }, [clients, clientId])
 
   async function submit(event) {
     event.preventDefault()
@@ -2101,12 +2244,15 @@ function UploadCandidate({ searchId, token, onUploaded }) {
       form.append("email", email.trim())
       form.append("short_profile", shortProfile)
       form.append("file", file)
-      const data = await apiFetch(`/searches/${searchId}/candidates`, { method: "POST", body: form }, token)
+      if (!searchId && clientId) form.append("client_id", String(clientId))
+      if (!searchId && selectedSearchIds.length) form.append("search_ids", selectedSearchIds.join(","))
+      const data = await apiFetch(searchId ? `/searches/${searchId}/candidates` : "/candidates", { method: "POST", body: form }, token)
       const ai = Number.isFinite(Number(data.ai_fit_score)) ? ` Match IA ${Math.round(Number(data.ai_fit_score))}%.` : ""
-      toast.success("Candidato cargado", `${fullName.trim()} fue agregado a la búsqueda.${ai}`)
+      toast.success("Candidato cargado", `${fullName.trim()} fue creado.${selectedSearchIds.length || searchId ? " Quedó asignado a búsqueda." : ""}${ai}`)
       setFullName("")
       setEmail("")
       setShortProfile("")
+      setSelectedSearchIds(searchId ? [Number(searchId)] : [])
       setFile(null)
       setErrors({})
       onUploaded()
@@ -2118,8 +2264,30 @@ function UploadCandidate({ searchId, token, onUploaded }) {
   }
 
   return (
-    <Panel title="Cargar candidato">
+    <Panel title="Crear candidato">
       <form className="form-grid" onSubmit={submit} noValidate>
+        {!searchId && (
+          <Field label="Cliente base" required error={errors.clientId}>
+            <select value={clientId} onChange={(event) => setClientId(event.target.value)}>
+              <option value="">Seleccionar cliente</option>
+              {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
+            </select>
+          </Field>
+        )}
+        {!searchId && (
+          <Field label="Asignar a búsquedas" helper="Opcional. Podés elegir varias con Ctrl/Cmd.">
+            <select
+              multiple
+              size={Math.min(7, Math.max(3, searches.length || 3))}
+              value={selectedSearchIds.map(String)}
+              onChange={(event) => setSelectedSearchIds(Array.from(event.target.selectedOptions).map((option) => Number(option.value)))}
+            >
+              {searches.filter((search) => search.search_state !== "activa").map((search) => (
+                <option key={search.id} value={search.id}>{search.title}</option>
+              ))}
+            </select>
+          </Field>
+        )}
         <Field label="Nombre completo" required error={errors.fullName}>
           <input
             value={fullName}
@@ -3991,6 +4159,10 @@ function patchCandidateMap(map, candidateId, patch) {
   return next
 }
 
+function patchCandidateList(list, candidateId, patch) {
+  return (list || []).map((candidate) => Number(candidate.id) === Number(candidateId) ? { ...candidate, ...patch } : candidate)
+}
+
 function uniqueById(items) {
   return Array.from(new Map((items || []).map((item) => [item.id, item])).values())
 }
@@ -4025,6 +4197,12 @@ function escapeHtml(value) {
 function truncate(value, max) {
   const text = String(value || "")
   return text.length > max ? `${text.slice(0, max).trim()}...` : text
+}
+
+function formatMatchPercent(item) {
+  const raw = Number(item?.match_percentage ?? item?.match_score ?? 0)
+  const percent = raw <= 10 ? raw * 10 : raw
+  return `${Math.round(percent)}%`
 }
 
 function capitalize(value) {

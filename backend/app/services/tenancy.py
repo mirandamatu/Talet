@@ -35,6 +35,15 @@ def get_candidate_organization_id(db: Session, candidate: Candidate) -> int | No
         return get_search_organization_id(db, candidate.search_id)
     if candidate.client_id is not None:
         return get_client_organization_id(db, candidate.client_id)
+    from app.models.candidate_search_assignment import CandidateSearchAssignment
+
+    assignment = (
+        db.query(CandidateSearchAssignment)
+        .filter(CandidateSearchAssignment.candidate_id == candidate.id, CandidateSearchAssignment.archived_at.is_(None))
+        .first()
+    )
+    if assignment:
+        return get_search_organization_id(db, assignment.search_id)
     return None
 
 

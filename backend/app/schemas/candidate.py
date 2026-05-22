@@ -14,6 +14,26 @@ class CandidateUpdate(BaseModel):
     status: str | None = None
 
 
+class CandidateAssignmentCreate(BaseModel):
+    search_ids: list[int]
+    status: str | None = "en_revision"
+    notes: str | None = None
+
+
+class CandidateAssignmentOut(BaseModel):
+    id: int
+    candidate_id: int
+    search_id: int
+    search_title: str | None = None
+    client_id: int | None = None
+    status: str
+    notes: str | None = None
+    assigned_by_user_id: int | None = None
+    assigned_at: str | None = None
+    updated_at: str | None = None
+    archived_at: str | None = None
+
+
 class CandidateBankOut(BaseModel):
     id: int
     full_name: str
@@ -48,6 +68,10 @@ class CandidateOut(BaseModel):
     ai_fit_recommendation: bool | None = None
     ai_fit_summary: str | None = None
     ai_fit_reasons: list[str] = []
+    assignment_status: str | None = None
+    assignments: list[CandidateAssignmentOut] = []
+    is_presented_to_client: bool = False
+    presented_at: str | None = None
 
     class Config:
         from_attributes = True

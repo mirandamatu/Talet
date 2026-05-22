@@ -29,6 +29,7 @@ class Search(Base):
 
     client = relationship('Client', back_populates='searches')
     candidates = relationship('Candidate', back_populates='search', foreign_keys='Candidate.search_id')
+    candidate_assignments = relationship('CandidateSearchAssignment', back_populates='search')
     slots = relationship('AvailabilitySlot', back_populates='search')
     documents = relationship('SearchDocument', back_populates='search', cascade='all, delete-orphan')
     ai_questions = relationship('SearchAIQuestion', back_populates='search', cascade='all, delete-orphan')

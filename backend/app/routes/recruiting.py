@@ -17,6 +17,7 @@ from app.core.security import get_current_user, require_roles
 from app.db.session import get_db
 from app.models.calendar_event import CalendarEvent
 from app.models.candidate import Candidate
+from app.models.candidate_search_assignment import CandidateSearchAssignment
 from app.models.client import Client
 from app.models.candidate_note import CandidateNote
 from app.models.candidate_outreach import CandidateOutreach
@@ -60,6 +61,7 @@ from app.services.notifications import create_event_notifications_for_roles, cre
 from app.services.storage import upload_document
 from app.services.search_states import classify_search
 from app.services.user_clients import can_access_client, require_client_access
+from app.services.candidate_assignments import PROJECT_STATUSES
 
 router = APIRouter(tags=["recruiting"])
 
@@ -97,7 +99,7 @@ def _candidate_access_search(user, candidate: Candidate, db: Session) -> Search 
 @router.post(
     "/searches/{search_id}/ai/analyze-candidates",
     response_model=SearchCandidateAnalysesOut,
-    dependencies=[Depends(require_roles("COMERCIAL", "TALENT", "SUPERADMIN"))],
+    dependencies=[Depends(require_roles("TALENT"))],
 )
 def analyze_candidates_for_search(search_id: int, user=Depends(get_current_user), db: Session = Depends(get_db)):
     search = db.get(Search, search_id)
@@ -105,16 +107,30 @@ def analyze_candidates_for_search(search_id: int, user=Depends(get_current_user)
         raise HTTPException(status_code=404, detail="Search not found")
     require_client_access(user, search.client_id, db)
 
-    candidates = (
-        db.query(Candidate)
-        .filter(Candidate.search_id == search_id, Candidate.archived_at.is_(None))
-        .order_by(Candidate.id.desc())
+    org_id = db.get(Client, search.client_id).organization_id if db.get(Client, search.client_id) else None
+    candidate_query = db.query(Candidate).filter(Candidate.archived_at.is_(None))
+    if org_id is not None:
+        org_clients = [row.id for row in db.query(Client.id).filter(Client.organization_id == org_id).all()]
+        candidate_query = candidate_query.filter(Candidate.client_id.in_(org_clients))
+    busy_ids = [
+        row.candidate_id
+        for row in db.query(CandidateSearchAssignment.candidate_id)
+        .join(Search, Search.id == CandidateSearchAssignment.search_id)
+        .filter(
+            CandidateSearchAssignment.archived_at.is_(None),
+            CandidateSearchAssignment.status.in_(PROJECT_STATUSES),
+            Search.archived_at.is_(None),
+        )
         .all()
-    )
+    ]
+    if busy_ids:
+        candidate_query = candidate_query.filter(Candidate.id.notin_(busy_ids))
+    candidates = candidate_query.order_by(Candidate.id.desc()).limit(250).all()
     items: list[dict] = []
     for candidate in candidates:
         row = upsert_search_candidate_analysis(db, search=search, candidate=candidate, created_by=user.id)
-        items.append(serialize_analysis(row, candidate.full_name))
+        if float(row.match_score or 0) >= 7:
+            items.append(serialize_analysis(row, candidate.full_name))
     items.sort(key=lambda item: float(item.get("match_score") or 0), reverse=True)
     return {"search_id": search.id, "items": items}
 
@@ -122,7 +138,7 @@ def analyze_candidates_for_search(search_id: int, user=Depends(get_current_user)
 @router.post(
     "/searches/{search_id}/ai/match-candidates",
     response_model=SearchCandidateAnalysesOut,
-    dependencies=[Depends(require_roles("COMERCIAL", "TALENT", "SUPERADMIN"))],
+    dependencies=[Depends(require_roles("TALENT"))],
 )
 def match_candidates_for_search(search_id: int, user=Depends(get_current_user), db: Session = Depends(get_db)):
     search = db.get(Search, search_id)
@@ -135,10 +151,23 @@ def match_candidates_for_search(search_id: int, user=Depends(get_current_user), 
     org_id = db.get(Client, search.client_id).organization_id if db.get(Client, search.client_id) else None
     candidate_query = db.query(Candidate).filter(Candidate.archived_at.is_(None))
     if org_id is not None:
-        org_clients = {c.id for c in db.query(Client.id).filter(Client.organization_id == org_id).all()}
+        org_clients = [c.id for c in db.query(Client.id).filter(Client.organization_id == org_id).all()]
         candidate_query = candidate_query.filter(
             (Candidate.client_id.in_(org_clients)) | (Candidate.search_id.isnot(None))
         )
+    busy_ids = [
+        row.candidate_id
+        for row in db.query(CandidateSearchAssignment.candidate_id)
+        .join(Search, Search.id == CandidateSearchAssignment.search_id)
+        .filter(
+            CandidateSearchAssignment.archived_at.is_(None),
+            CandidateSearchAssignment.status.in_(PROJECT_STATUSES),
+            Search.archived_at.is_(None),
+        )
+        .all()
+    ]
+    if busy_ids:
+        candidate_query = candidate_query.filter(Candidate.id.notin_(busy_ids))
     candidates = candidate_query.order_by(Candidate.id.desc()).limit(250).all()
 
     client_context = build_client_context(db, search.client_id)
@@ -182,7 +211,8 @@ def match_candidates_for_search(search_id: int, user=Depends(get_current_user), 
         db.add(row)
         db.commit()
         db.refresh(row)
-        items.append(serialize_analysis(row, candidate.full_name))
+        if row.match_score >= 7:
+            items.append(serialize_analysis(row, candidate.full_name))
     items.sort(key=lambda item: float(item.get("match_score") or 0), reverse=True)
     return {"search_id": search.id, "items": items}
 

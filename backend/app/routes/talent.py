@@ -1,7 +1,7 @@
 ﻿from datetime import datetime, timezone
 from io import BytesIO
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from pydantic import BaseModel
@@ -21,7 +21,8 @@ from app.services.mail_result import mail_result_or_raise
 from app.services.notifications import notify_users
 from app.services.presentations import is_presented_to_client, present_candidate
 from app.services.storage import save_cv_local, upload_cv
-from app.services.user_clients import require_client_access
+from app.services.user_clients import get_accessible_clients, require_client_access
+from app.services.candidate_assignments import assign_candidate_to_search, list_assignments_for_candidate, serialize_assignment
 
 router = APIRouter(tags=['talent'])
 
@@ -30,7 +31,23 @@ class PresentCandidateRequest(BaseModel):
     notes: str | None = None
 
 
+def _parse_search_ids(value: str | None) -> list[int]:
+    if not value:
+        return []
+    ids: list[int] = []
+    for part in str(value).replace(";", ",").split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            ids.append(int(part))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid search_ids")
+    return ids
+
+
 def _serialize_candidate(candidate: Candidate, db: Session) -> dict:
+    assignments = list_assignments_for_candidate(db, candidate.id)
     return {
         'id': candidate.id,
         'search_id': candidate.search_id,
@@ -48,8 +65,97 @@ def _serialize_candidate(candidate: Candidate, db: Session) -> dict:
         'has_client_feedback': False,
         'latest_client_feedback_reason': None,
         'client_feedback': [],
+        'assignment_status': assignments[0].status if assignments else candidate.status,
+        'assignments': [serialize_assignment(row) for row in assignments],
+        'is_presented_to_client': bool(candidate.search_id and is_presented_to_client(db, candidate.id, candidate.search_id)),
+        'presented_at': None,
         **get_candidate_fit_fields(db, candidate.id),
     }
+
+
+@router.post('/candidates', response_model=CandidateOut, dependencies=[Depends(require_roles('TALENT', 'SUPERADMIN'))])
+def create_global_candidate(
+    full_name: str = Form(...),
+    short_profile: str | None = Form(None),
+    email: str | None = Form(None),
+    client_id: int | None = Form(None),
+    search_ids: str | None = Form(None),
+    file: UploadFile = File(...),
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    selected_search_ids = _parse_search_ids(search_ids)
+    searches: list[Search] = []
+    for search_id in selected_search_ids:
+        search = db.get(Search, search_id)
+        if not search or search.archived_at is not None:
+            raise HTTPException(status_code=404, detail='Search not found')
+        require_client_access(user, search.client_id, db)
+        searches.append(search)
+
+    if searches:
+        chosen_client_id = searches[0].client_id
+    elif client_id is not None:
+        require_client_access(user, client_id, db)
+        chosen_client_id = client_id
+    else:
+        accessible = get_accessible_clients(user, db)
+        if not accessible:
+            raise HTTPException(status_code=400, detail='No accessible client')
+        chosen_client_id = accessible[0].id
+
+    if not file.filename.lower().endswith('.pdf'):
+        raise HTTPException(status_code=400, detail='Only PDF allowed')
+    pdf_bytes = file.file.read()
+    if not pdf_bytes:
+        raise HTTPException(status_code=400, detail='Empty file')
+    try:
+        cv_url = upload_cv(BytesIO(pdf_bytes), file.filename)
+    except Exception:
+        local_key = f"cvs/{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_global.pdf"
+        cv_url = save_cv_local(BytesIO(pdf_bytes), local_key)
+
+    candidate = Candidate(
+        search_id=None,
+        client_id=chosen_client_id,
+        full_name=full_name,
+        email=email,
+        short_profile=short_profile,
+        cv_file_url=cv_url,
+        cv_file_name=file.filename,
+        cv_uploaded_at=datetime.now(timezone.utc),
+        status='banco_talent' if not searches else 'en_revision',
+        source='manual',
+    )
+    db.add(candidate)
+    db.commit()
+    db.refresh(candidate)
+    for search in searches:
+        assign_candidate_to_search(db, candidate=candidate, search=search, status='en_revision', assigned_by_user_id=user.id)
+    try:
+        cv_text = extract_pdf_text(pdf_bytes)
+        target_search = searches[0] if searches else None
+        fit = analyze_candidate_fit(
+            search_title=target_search.title if target_search else 'Banco de talento',
+            job_description=target_search.job_description if target_search else '',
+            candidate_name=candidate.full_name,
+            short_profile=candidate.short_profile,
+            cv_text=cv_text,
+        )
+        create_ai_insight(
+            db,
+            entity_type='candidate',
+            entity_id=candidate.id,
+            kind='candidate_fit',
+            score=fit.get('score'),
+            recommendation=fit.get('recommendation'),
+            summary=fit.get('summary'),
+            payload_json={'reasons': fit.get('reasons') or [], 'model': fit.get('model') or 'heuristic'},
+            created_by=user.id,
+        )
+    except Exception:
+        pass
+    return _serialize_candidate(candidate, db)
 
 
 @router.post('/searches/{search_id}/candidates', response_model=CandidateOut, dependencies=[Depends(require_roles('TALENT', 'SUPERADMIN'))])
@@ -98,6 +204,7 @@ def create_candidate(
     db.add(candidate)
     db.commit()
     db.refresh(candidate)
+    assign_candidate_to_search(db, candidate=candidate, search=search, status='en_revision', assigned_by_user_id=user.id)
     try:
         cv_text = extract_pdf_text(pdf_bytes)
         fit = analyze_candidate_fit(
@@ -132,13 +239,15 @@ def create_candidate(
 def present_candidate_to_client(
     candidate_id: int,
     payload: PresentCandidateRequest | None = None,
+    search_id: int | None = Query(None),
     user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     candidate = db.get(Candidate, candidate_id)
-    if not candidate or not candidate.search_id:
+    context_search_id = search_id or candidate.search_id
+    if not candidate or not context_search_id:
         raise HTTPException(status_code=404, detail='Candidate not found')
-    search = db.get(Search, candidate.search_id)
+    search = db.get(Search, context_search_id)
     if not search:
         raise HTTPException(status_code=404, detail='Search not found')
     require_client_access(user, search.client_id, db)
@@ -189,7 +298,7 @@ def present_candidate_to_client(
 
 @router.post('/candidates/{candidate_id}/confirm-send', dependencies=[Depends(require_roles('TALENT', 'SUPERADMIN'))])
 def confirm_send(candidate_id: int, user=Depends(get_current_user), db: Session = Depends(get_db)):
-    return present_candidate_to_client(candidate_id, PresentCandidateRequest(), user, db)
+    return present_candidate_to_client(candidate_id, PresentCandidateRequest(), None, user, db)
 
 
 @router.get('/searches/{search_id}/availability-slots', response_model=list[AvailabilitySlotOut], dependencies=[Depends(require_roles('TALENT', 'SUPERADMIN', 'CLIENTE', 'COMERCIAL'))])
